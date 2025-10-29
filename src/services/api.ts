@@ -6,9 +6,15 @@ class ApiService {
   private refreshTokenPromise: Promise<string> | null = null;
 
   constructor() {
+    // In dev we want the client to call the Vite dev server (same-origin)
+    // so the Vite proxy can forward requests to the backend and avoid CORS.
+    // In production use the explicit VITE_API_URL if provided.
+    const devBase = "/api/admin"; // matches the proxy rule in vite.config.ts
+    const prodBase = import.meta.env.VITE_API_URL || "http://localhost:3003/api/admin";
+    const baseURL = import.meta.env.DEV ? devBase : prodBase;
+
     this.api = axios.create({
-      baseURL:
-        import.meta.env.VITE_API_URL || "http://localhost:3003/api/admin",
+      baseURL,
       timeout: 10000,
       headers: {
         "Content-Type": "application/json",
