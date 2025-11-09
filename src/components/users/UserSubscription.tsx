@@ -326,8 +326,8 @@ export function UserSubscription({
             </Card>
           </div>
 
-          {/* Available Plans */}
-          <Card>
+        {/* Available Plans */}
+          {/* <Card>
             <CardHeader>
               <CardTitle>Available Plans</CardTitle>
             </CardHeader>
@@ -384,7 +384,7 @@ export function UserSubscription({
                 })}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-6">
