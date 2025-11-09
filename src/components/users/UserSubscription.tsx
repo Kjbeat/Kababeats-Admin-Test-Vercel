@@ -41,6 +41,36 @@ export function UserSubscription({
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return 'N/A';
+    
+    try {
+      // Handle different date formats
+      let date: Date;
+      
+      if (typeof dateValue === 'string') {
+        date = new Date(dateValue);
+      } else if (typeof dateValue === 'number') {
+        date = new Date(dateValue);
+      } else if (dateValue.$date) {
+        date = new Date(dateValue.$date);
+      } else {
+        date = new Date(dateValue);
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date:', dateValue);
+        return 'Invalid Date';
+      }
+      
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting date:', error, dateValue);
+      return 'Error';
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -64,11 +94,19 @@ export function UserSubscription({
       ? currentPlanData.priceYearly 
       : currentPlanData.priceMonthly,
     status: (userSubscription.status || 'active').toLowerCase(),
-    startDate: userSubscription.currentPeriodStart?.$date || userSubscription.createdAt?.$date,
-    endDate: userSubscription.currentPeriodEnd?.$date,
+    startDate: userSubscription.currentPeriodStart?.$date || userSubscription.currentPeriodStart || userSubscription.createdAt?.$date || userSubscription.createdAt,
+    endDate: userSubscription.currentPeriodEnd?.$date || userSubscription.currentPeriodEnd || userSubscription.endDate?.$date || userSubscription.endDate,
     autoRenew: !userSubscription.cancelAtPeriodEnd,
     features: currentPlanData.features || []
   } : null;
+
+  // Debug logging to understand the data structure
+  if (process.env.NODE_ENV === 'development' && userSubscription) {
+    console.log('UserSubscription data:', userSubscription);
+    console.log('Current plan endDate:', currentPlan?.endDate);
+    console.log('Raw currentPeriodEnd:', userSubscription.currentPeriodEnd);
+    console.log('Raw endDate:', userSubscription.endDate);
+  }
 
   // Plans disponibles
   const availablePlans = subscriptions
@@ -211,9 +249,9 @@ export function UserSubscription({
                       /{currentPlan.type === 'yearly' ? 'year' : 'month'}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  {/* <div className="text-xs text-muted-foreground">
                     {currentPlan.autoRenew ? 'Auto-renewal enabled' : 'Auto-renewal disabled'}
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -226,7 +264,7 @@ export function UserSubscription({
                   </div>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2">
-                  {currentPlan.features.map((feature, index) => (
+                  {currentPlan.features.map((feature: string, index: number) => (
                     <div key={index} className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
                       <span className="text-sm">{feature}</span>
@@ -271,9 +309,7 @@ export function UserSubscription({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Next Billing</span>
                     <span className="text-sm">
-                      {currentPlan.endDate 
-                        ? new Date(currentPlan.endDate).toLocaleDateString()
-                        : 'N/A'}
+                      {formatDate(currentPlan.endDate)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
