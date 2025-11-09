@@ -312,12 +312,12 @@ export function UserSubscription({
                       {formatDate(currentPlan.endDate)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
+                  {/* <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Auto Renewal</span>
                     <Badge variant={currentPlan.autoRenew ? "default" : "outline"}>
                       {currentPlan.autoRenew ? 'Enabled' : 'Disabled'}
                     </Badge>
-                  </div>
+                  </div> */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Status</span>
                     <div className="flex items-center gap-2">
