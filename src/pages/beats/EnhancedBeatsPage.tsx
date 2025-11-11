@@ -35,13 +35,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -111,32 +104,38 @@ export function EnhancedBeatsPage() {
     return filters;
   }, [searchQuery, selectedGenre, selectedMood]);
 
-  // Helper function to map frontend sort values to backend values
-  const mapSortByToBackend = useCallback((frontendSort: string): string => {
-    const mapping: Record<string, string> = {
-      'newest': 'createdAt',
-      'oldest': 'createdAt', 
-      'popular': 'plays',
-      'plays': 'plays',
-      'likes': 'likes',
-      'title': 'title',
-      'producer': 'owner',
-      'genre': 'genre'
+  // Helper function to map frontend sort values to backend values and determine sort order
+  const mapSortByToBackend = useCallback((frontendSort: string): { sortBy: string; sortOrder: 'asc' | 'desc' } => {
+    const mapping: Record<string, { sortBy: string; sortOrder: 'asc' | 'desc' }> = {
+      'newest': { sortBy: 'createdAt', sortOrder: 'desc' },
+      'oldest': { sortBy: 'createdAt', sortOrder: 'asc' }, 
+      'price-low': { sortBy: 'basePrice', sortOrder: 'asc' },
+      'price-high': { sortBy: 'basePrice', sortOrder: 'desc' },
+      'popular': { sortBy: 'plays', sortOrder: 'desc' },
+      'plays': { sortBy: 'plays', sortOrder: 'desc' },
+      'likes': { sortBy: 'likes', sortOrder: 'desc' },
+      'title': { sortBy: 'title', sortOrder: 'asc' },
+      'producer': { sortBy: 'owner', sortOrder: 'asc' },
+      'genre': { sortBy: 'genre', sortOrder: 'asc' }
     };
-    return mapping[frontendSort] || 'createdAt';
+    return mapping[frontendSort] || { sortBy: 'createdAt', sortOrder: 'desc' };
   }, []);
 
   const queryParams = useMemo(
-    () => ({
-      search: searchQuery || undefined,
-      genre: selectedGenre !== "All" ? selectedGenre : undefined,
-      // Note: mood filtering will be done on the frontend since backend doesn't support it
-      page: 1,
-      limit: 1000, // Get a large number of beats to filter on frontend
-      sortBy: mapSortByToBackend(sortBy),
-      sortOrder: "desc" as "asc" | "desc",
-    }),
-    [searchQuery, selectedGenre, selectedMood, sortBy]
+    () => {
+      const sortConfig = mapSortByToBackend(sortBy);
+      console.log(`Sorting by: ${sortBy} -> Backend: ${sortConfig.sortBy} ${sortConfig.sortOrder}`);
+      return {
+        search: searchQuery || undefined,
+        genre: selectedGenre !== "All" ? selectedGenre : undefined,
+        // Note: mood filtering will be done on the frontend since backend doesn't support it
+        page: 1,
+        limit: 1000, // Get a large number of beats to filter on frontend
+        sortBy: sortConfig.sortBy,
+        sortOrder: sortConfig.sortOrder,
+      };
+    },
+    [searchQuery, selectedGenre, selectedMood, sortBy, mapSortByToBackend]
   );
 
   // Use the simple useBeats hook
@@ -221,37 +220,59 @@ export function EnhancedBeatsPage() {
       filtered = filtered.filter((beat) => beat.mood === selectedMood);
     }
 
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      switch (sortBy) {
-        case "title":
-          comparison = a.title.localeCompare(b.title);
-          break;
-        case "producer":
-          comparison = (
-            a.owner?.username ||
-            a.owner?.email ||
-            ""
-          ).localeCompare(b.owner?.username || b.owner?.email || "");
-          break;
-        case "genre":
-          comparison = a.genre.localeCompare(b.genre);
-          break;
-        case "plays":
-          comparison = a.plays - b.plays;
-          break;
-        case "likes":
-          comparison = a.likes - b.likes;
-          break;
-        case "createdAt":
-          comparison =
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-          break;
-        default:
-          comparison = a.plays - b.plays;
-      }
-      return sortOrder === "asc" ? comparison : -comparison;
-    });
+    // Only apply frontend sorting if we're filtering by mood or search
+    // Otherwise, rely on backend sorting which is more efficient
+    if ((selectedMood && selectedMood !== "All") || searchQuery) {
+      console.log(`Applying frontend sorting for: ${sortBy} (due to mood/search filtering)`);
+      filtered.sort((a, b) => {
+        let comparison = 0;
+        switch (sortBy) {
+          case "newest":
+            comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            break;
+          case "oldest":
+            comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            break;
+          case "price-low":
+            comparison = a.basePrice - b.basePrice;
+            break;
+          case "price-high":
+            comparison = b.basePrice - a.basePrice;
+            break;
+          case "popular":
+            comparison = (b.plays + b.likes) - (a.plays + a.likes);
+            break;
+          case "title":
+            comparison = a.title.localeCompare(b.title);
+            break;
+          case "producer":
+            comparison = (
+              a.owner?.username ||
+              a.owner?.email ||
+              ""
+            ).localeCompare(b.owner?.username || b.owner?.email || "");
+            break;
+          case "genre":
+            comparison = a.genre.localeCompare(b.genre);
+            break;
+          case "plays":
+            comparison = b.plays - a.plays;
+            break;
+          case "likes":
+            comparison = b.likes - a.likes;
+            break;
+          default:
+            comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return comparison;
+      });
+    }
+
+    console.log(`Final filtered beats: ${filtered.length} beats`);
+    if (filtered.length > 0) {
+      console.log(`First beat: ${filtered[0].title} (${filtered[0].createdAt})`);
+      console.log(`Last beat: ${filtered[filtered.length - 1].title} (${filtered[filtered.length - 1].createdAt})`);
+    }
 
     setFilteredBeats(filtered);
   }, [beats, searchQuery, selectedGenre, selectedMood, sortBy, sortOrder]);
@@ -521,21 +542,6 @@ export function EnhancedBeatsPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="popularity">Popularity</SelectItem>
-              <SelectItem value="title">Title</SelectItem>
-              <SelectItem value="producer">Producer</SelectItem>
-              <SelectItem value="genre">Genre</SelectItem>
-              <SelectItem value="plays">Plays</SelectItem>
-              <SelectItem value="likes">Likes</SelectItem>
-              <SelectItem value="createdAt">Date</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Button
             variant="outline"
             size="sm"
