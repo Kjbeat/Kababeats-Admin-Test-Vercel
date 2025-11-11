@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiService } from '@/services/api';
-import { Beat, BeatFilters } from '@/types';
+import { Beat, BeatFilters, AdvancedBeatFilters } from '@/types';
 
 // Cache configuration
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -62,6 +62,24 @@ function generateCacheKey(params: BeatFilters): string {
   return JSON.stringify(sortedParams);
 }
 
+// Map frontend sort values to backend expected values
+function mapFrontendSortToBackend(frontendSort: string): string {
+  const sortMapping: Record<string, string> = {
+    'newest': 'createdAt',
+    'oldest': 'createdAt',
+    'popular': 'plays',
+    'plays': 'plays',
+    'likes': 'likes',
+    'title': 'title',
+    'producer': 'owner',
+    'genre': 'genre',
+    'price-low': 'price',
+    'price-high': 'price'
+  };
+  
+  return sortMapping[frontendSort] || 'createdAt';
+}
+
 // Clean expired cache entries
 function cleanCache(): void {
   const now = Date.now();
@@ -118,7 +136,7 @@ async function fetchBeatsWithCache(params: BeatFilters): Promise<BeatResponse> {
         cleanCache();
       }
 
-      return response;
+      return response as BeatResponse;
     } catch (error) {
       console.error('fetchBeatsWithCache: Error fetching beats:', error);
       throw error;
@@ -134,7 +152,7 @@ async function fetchBeatsWithCache(params: BeatFilters): Promise<BeatResponse> {
   return requestPromise;
 }
 
-export function useAdvancedBeats(initialQueryParams?: BeatFilters) {
+export function useAdvancedBeats(initialAdvancedParams?: AdvancedBeatFilters) {
   const [beats, setBeats] = useState<Beat[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -144,9 +162,8 @@ export function useAdvancedBeats(initialQueryParams?: BeatFilters) {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   
-  // Query parameters
-  const [queryParams, setQueryParams] = useState<BeatFilters>(
-    initialQueryParams || {
+  // Query parameters - we keep the internal state as BeatFilters for API calls
+  const [queryParams, setQueryParams] = useState<BeatFilters>({
     search: '',
     genre: undefined,
     status: undefined,
@@ -180,13 +197,23 @@ export function useAdvancedBeats(initialQueryParams?: BeatFilters) {
         setIsLoadingMore(true);
       }
 
-      const params = { ...queryParams, page };
-      console.log('useAdvancedBeats: Fetching with params:', params);
-      const response = await fetchBeatsWithCache(params);
+      // Map frontend parameters to backend BeatFilters
+      const backendParams: BeatFilters = {
+        search: queryParams.search,
+        genre: queryParams.genre,
+        status: queryParams.status, 
+        page,
+        limit: queryParams.limit || 50,
+        sortBy: mapFrontendSortToBackend(queryParams.sortBy || 'createdAt'),
+        sortOrder: queryParams.sortOrder || 'desc'
+      };
+
+      console.log('useAdvancedBeats: Fetching with backend params:', backendParams);
+      const response = await fetchBeatsWithCache(backendParams);
       console.log('useAdvancedBeats: API response:', response);
       
-      // The API service already extracts the data property, so response is the beats array directly
-      const newBeats = Array.isArray(response) ? response : (response.data || []);
+      // The API service already extracts the data property, so response should be the full response
+      const newBeats = response?.data || [];
       console.log('useAdvancedBeats: Extracted beats:', newBeats.length, newBeats);
       
       if (reset) {
@@ -198,8 +225,8 @@ export function useAdvancedBeats(initialQueryParams?: BeatFilters) {
       }
       
       setCurrentPage(page);
-      setTotalPages(response.pagination?.pages || 1);
-      setHasMore(page < (response.pagination?.pages || 1));
+      setTotalPages(response?.pagination?.pages || 1);
+      setHasMore(page < (response?.pagination?.pages || 1));
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch beats';
@@ -239,6 +266,19 @@ export function useAdvancedBeats(initialQueryParams?: BeatFilters) {
     setHasMore(true);
     await fetchBeats(1, true);
   }, [fetchBeats]);
+
+  // Update query parameters from advanced filters
+  const updateFromAdvancedFilters = useCallback((advancedFilters: Partial<AdvancedBeatFilters>) => {
+    const backendFilters: Partial<BeatFilters> = {
+      search: advancedFilters.search,
+      genre: advancedFilters.genre,
+      // Note: mood is not supported by backend, it will be filtered on frontend
+      sortBy: mapFrontendSortToBackend(advancedFilters.sortBy || 'newest'),
+      sortOrder: advancedFilters.sortOrder || 'desc'
+    };
+    
+    setQueryParams(prev => ({ ...prev, ...backendFilters }));
+  }, []);
 
   // Update query parameters
   const updateQueryParams = useCallback((updates: Partial<BeatFilters>) => {
@@ -305,6 +345,7 @@ export function useAdvancedBeats(initialQueryParams?: BeatFilters) {
     loadMore,
     resetAndFetch,
     updateQueryParams,
+    updateFromAdvancedFilters,
     clearAllFilters,
     retry,
     

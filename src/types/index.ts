@@ -1,5 +1,5 @@
 // Admin Types
-export type BeatStatus = 'draft' | 'published' | 'scheduled' | 'archived';
+export type BeatStatus = 'draft' | 'published' | 'scheduled' | 'archived' | 'rejected';
 
 
 export interface AdminUser {
@@ -215,7 +215,7 @@ export interface Beat {
   duration?: number;
   fileSize?: number;
   audioFormat: 'mp3' | 'wav' | 'm4a';
-  status: 'draft' | 'published' | 'scheduled' | 'archived';
+  status: BeatStatus;
   plays: number;
   owner: {
     _id: string;
@@ -233,12 +233,23 @@ export interface Beat {
 
 export interface BeatFilters {
   search?: string;
-  status?: 'draft' | 'published' | 'archived' | 'flagged';
+  status?: 'draft' | 'published' | 'archived' | 'flagged' | 'rejected';
   genre?: string;
   dateFrom?: string;
   dateTo?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+// Frontend-specific filters for EnhancedBeatsPage
+export interface AdvancedBeatFilters {
+  search?: string;
+  genre?: string;
+  mood?: string;
+  sortBy?: 'newest' | 'oldest' | 'price-low' | 'price-high' | 'popular' | 'plays' | 'likes' | 'title' | 'producer' | 'genre';
+  sortOrder?: 'asc' | 'desc';
 }
 
 // Dashboard Types

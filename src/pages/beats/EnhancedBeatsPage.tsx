@@ -1,34 +1,33 @@
-import React, {
+import {
   useState,
+  useCallback,
+  useMemo,
   useEffect,
   useRef,
-  useMemo,
-  useCallback,
 } from "react";
 import {
-  Music,
-  Search,
-  Filter,
   Play,
   Pause,
-  Volume2,
-  VolumeX,
-  MoreHorizontal,
-  TrendingUp,
-  TrendingDown,
-  Grid3X3,
-  List,
+  Music,
   SkipBack,
   SkipForward,
-  BarChart3,
+  Volume2,
+  VolumeX,
+  Grid3X3,
+  List,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
   Loader2,
   AlertCircle,
-  RefreshCw,
+  BarChart3,
   PlusCircle,
-  ListMusic,
+  MoreVertical,
+  MoreHorizontal,
   Trash2,
   CheckCircle,
   XCircle,
+  ListMusic,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,8 +57,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAdvancedBeats } from "@/hooks/useAdvancedBeats";
-import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { useBeats } from "@/hooks/useBeats";
+// import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"; // Removed for now
 import { AdminBeatFilters } from "@/components/AdminBeatFilters";
 import { BeatAnalytics } from "@/components/BeatAnalytics";
 import { Beat } from "@/types";
@@ -112,31 +111,49 @@ export function EnhancedBeatsPage() {
     return filters;
   }, [searchQuery, selectedGenre, selectedMood]);
 
+  // Helper function to map frontend sort values to backend values
+  const mapSortByToBackend = useCallback((frontendSort: string): string => {
+    const mapping: Record<string, string> = {
+      'newest': 'createdAt',
+      'oldest': 'createdAt', 
+      'popular': 'plays',
+      'plays': 'plays',
+      'likes': 'likes',
+      'title': 'title',
+      'producer': 'owner',
+      'genre': 'genre'
+    };
+    return mapping[frontendSort] || 'createdAt';
+  }, []);
+
   const queryParams = useMemo(
     () => ({
       search: searchQuery || undefined,
       genre: selectedGenre !== "All" ? selectedGenre : undefined,
-      mood: selectedMood !== "All" ? selectedMood : undefined,
-      sortBy: sortBy as
-        | "newest"
-        | "oldest"
-        | "price-low"
-        | "price-high"
-        | "popular"
-        | "plays"
-        | "likes",
+      // Note: mood filtering will be done on the frontend since backend doesn't support it
+      page: 1,
+      limit: 1000, // Get a large number of beats to filter on frontend
+      sortBy: mapSortByToBackend(sortBy),
       sortOrder: "desc" as "asc" | "desc",
     }),
     [searchQuery, selectedGenre, selectedMood, sortBy]
   );
 
-  const { beats, isLoading, isLoadingMore, hasMore, error, retry, loadMore } =
-    useAdvancedBeats(queryParams);
+  // Use the simple useBeats hook
+  const { data: beatsResponse, isLoading, error, refetch } = useBeats(queryParams);
 
-  const { sentinelRef } = useInfiniteScroll(loadMore, {
-    threshold: 100,
-    enabled: hasMore && !isLoadingMore,
-  });
+  // Extract beats from the API response
+  const beats = useMemo(() => {
+    if (!beatsResponse) return [];
+    // The useBeats hook returns the response from apiService.getBeats
+    return Array.isArray(beatsResponse) ? beatsResponse : (beatsResponse as any)?.data || [];
+  }, [beatsResponse]);
+
+  // Remove infinite scroll since we're using simple pagination
+  // const { sentinelRef } = useInfiniteScroll(loadMore, {
+  //   threshold: 100,
+  //   enabled: hasMore && !isLoadingMore,
+  // });
 
   const clearAllFilters = useCallback(() => {
     setSearchQuery("");
@@ -184,8 +201,8 @@ export function EnhancedBeatsPage() {
   useEffect(() => {
     let filtered = [...beats];
 
-    if (queryParams.search) {
-      const searchTerm = queryParams.search.toLowerCase();
+    if (searchQuery) {
+      const searchTerm = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (beat) =>
           beat.title.toLowerCase().includes(searchTerm) ||
@@ -195,12 +212,13 @@ export function EnhancedBeatsPage() {
       );
     }
 
-    if (queryParams.genre) {
-      filtered = filtered.filter((beat) => beat.genre === queryParams.genre);
+    if (selectedGenre && selectedGenre !== "All") {
+      filtered = filtered.filter((beat) => beat.genre === selectedGenre);
     }
 
-    if (queryParams.mood) {
-      filtered = filtered.filter((beat) => beat.mood === queryParams.mood);
+    // Handle mood filtering on frontend since backend doesn't support it
+    if (selectedMood && selectedMood !== "All") {
+      filtered = filtered.filter((beat) => beat.mood === selectedMood);
     }
 
     filtered.sort((a, b) => {
@@ -236,7 +254,7 @@ export function EnhancedBeatsPage() {
     });
 
     setFilteredBeats(filtered);
-  }, [beats, queryParams, sortBy, sortOrder]);
+  }, [beats, searchQuery, selectedGenre, selectedMood, sortBy, sortOrder]);
 
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -494,8 +512,8 @@ export function EnhancedBeatsPage() {
           {error && (
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-destructive" />
-              <span className="text-sm text-destructive">{error}</span>
-              <Button variant="ghost" size="sm" onClick={retry}>
+              <span className="text-sm text-destructive">{error.message}</span>
+              <Button variant="ghost" size="sm" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4 mr-1" />
                 Retry
               </Button>
@@ -570,7 +588,7 @@ export function EnhancedBeatsPage() {
                       <div className="relative aspect-square bg-muted overflow-hidden group ring-1 ring-border/40 group-hover:ring-primary/40 transition-all duration-300">
                         {getBeatArtworkUrl(beat) ? (
                           <img
-                            src={getBeatArtworkUrl(beat)}
+                            src={getBeatArtworkUrl(beat) || ""}
                             alt={beat.title}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
@@ -654,7 +672,7 @@ export function EnhancedBeatsPage() {
                         <div className="relative w-16 h-16 rounded-md overflow-hidden ring-1 ring-border/40 flex-shrink-0 bg-muted">
                           {getBeatArtworkUrl(beat) ? (
                             <img
-                              src={getBeatArtworkUrl(beat)}
+                              src={getBeatArtworkUrl(beat) || ""}
                               alt={beat.title}
                               className="w-full h-full object-cover"
                             />
@@ -780,22 +798,7 @@ export function EnhancedBeatsPage() {
               </div>
             )}
 
-            <div ref={sentinelRef} className="h-6 w-full" />
-
-            {isLoadingMore && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                <span className="text-muted-foreground">
-                  Loading more beats...
-                </span>
-              </div>
-            )}
-
-            {!hasMore && filteredBeats.length > 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                You've reached the end of the list
-              </div>
-            )}
+            {/* Removed infinite scroll functionality */}
 
             {!isLoading && !error && filteredBeats.length === 0 && (
               <div className="text-center py-12">
@@ -889,7 +892,7 @@ export function EnhancedBeatsPage() {
                         <div className="absolute inset-0 rounded-xl overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
                           {getBeatArtworkUrl(currentBeat) ? (
                             <img
-                              src={getBeatArtworkUrl(currentBeat)}
+                              src={getBeatArtworkUrl(currentBeat) || ""}
                               alt={currentBeat.title}
                               className="w-full h-full object-cover"
                             />
