@@ -54,7 +54,9 @@ export type AdminPermission =
   | 'admin_users.manage'
   | 'system.settings'
   | 'subscriptions.manage'
-  | 'licenses.manage';
+  | 'licenses.manage'
+  | 'transactions.view'
+  | 'subscription_management.view';
 
 // Auth Types
 export interface AuthResponse {
@@ -494,6 +496,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'sales.view', 'sales.manage',
     'subscriptions.manage',
     'licenses.manage',
+    'transactions.view',
+    'subscription_management.view',
     'analytics.view',
     'logs.view',
     'notifications.send',
@@ -509,6 +513,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'playlists.view', 'playlists.manage',
     'subscriptions.manage',
     'licenses.manage',
+    'transactions.view',
+    'subscription_management.view',
     'sales.view',
     'analytics.view',
     'logs.view',
@@ -534,11 +540,14 @@ export const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
     'users.view',
     'beats.view',
     'sales.view', 'sales.manage',
+    'transactions.view',
     'analytics.view',
     'payouts.manage'
   ],
   finance_admin: [
     'sales.view', 'sales.manage',
+    'transactions.view',
+    'subscription_management.view',
     'analytics.view',
     'payouts.manage',
     'settings.manage'
@@ -560,3 +569,124 @@ export type PayoutStatus =
   | 'failed'
   | 'rejected'
   | 'payment_method_not_found';
+
+// Transaction Types
+export interface Transaction {
+  _id: string;
+  transactionId: string;
+  beatId: {
+    _id: string;
+    title: string;
+    artwork?: string;
+    producer: string;
+    genre: string;
+  };
+  buyerId: {
+    _id: string;
+    username: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  sellerId: {
+    _id: string;
+    username: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  type: 'beat_purchase' | 'subscription' | 'payout' | 'refund';
+  amount: number;
+  currency: string;
+  status: 'completed' | 'pending' | 'failed' | 'refunded' | 'cancelled';
+  paymentMethod: string;
+  paymentProvider: 'stripe' | 'paypal' | 'paystack' | 'flutterwave';
+  platformFee: number;
+  netAmount: number;
+  description?: string;
+  metadata?: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransactionFilters {
+  search?: string;
+  type?: 'beat_purchase' | 'subscription' | 'payout' | 'refund' | 'all';
+  status?: 'completed' | 'pending' | 'failed' | 'refunded' | 'cancelled' | 'all';
+  paymentMethod?: 'card' | 'paypal' | 'bank_transfer' | 'all';
+  paymentProvider?: 'stripe' | 'paypal' | 'paystack' | 'flutterwave' | 'all';
+  dateFrom?: string;
+  dateTo?: string;
+  amountMin?: number;
+  amountMax?: number;
+  page?: number;
+  limit?: number;
+  sortBy?: 'createdAt' | 'amount' | 'type' | 'status';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// Subscription Management Types
+export interface SubscriptionUser {
+  _id: string;
+  userId: {
+    _id: string;
+    username: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+  };
+  planId: {
+    _id: string;
+    name: string;
+    code: string;
+    priceMonthly: number;
+    priceYearly: number;
+    features: string[];
+  };
+  type: 'free' | 'monthly' | 'yearly' | 'lifetime';
+  status: 'active' | 'cancelled' | 'expired' | 'pending' | 'suspended' | 'downgrading';
+  currentPeriodStart: string;
+  currentPeriodEnd?: string;
+  nextBillingDate?: string;
+  cancelAt?: string;
+  canceledAt?: string;
+  amount: number;
+  currency: string;
+  paymentMethod?: string;
+  paymentProvider?: string;
+  subscriptionId?: string;
+  autoRenew: boolean;
+  trialEndsAt?: string;
+  isInTrial: boolean;
+  downgradeTo?: {
+    planId: string;
+    planName: string;
+    effectiveDate: string;
+  };
+  usage: {
+    uploadsThisMonth: number;
+    aiCreditsUsed: number;
+    storageUsedMB: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionManagementFilters {
+  search?: string;
+  type?: 'free' | 'monthly' | 'yearly' | 'lifetime' | 'all';
+  status?: 'active' | 'cancelled' | 'expired' | 'pending' | 'suspended' | 'downgrading' | 'all';
+  planId?: string;
+  paymentProvider?: 'stripe' | 'paypal' | 'paystack' | 'flutterwave' | 'all';
+  isInTrial?: boolean;
+  autoRenew?: boolean;
+  dateFrom?: string;
+  dateTo?: string;
+  billingDateFrom?: string;
+  billingDateTo?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'createdAt' | 'nextBillingDate' | 'amount' | 'status' | 'type';
+  sortOrder?: 'asc' | 'desc';
+}

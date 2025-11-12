@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosResponse } from "axios";
+import axios, { AxiosInstance } from "axios";
 import { ApiResponse, AuthResponse, LoginCredentials } from "@/types";
 
 class ApiService {
@@ -430,6 +430,52 @@ async exportPayoutsToExcel(params?: Record<string, any>): Promise<Blob> {
 
   async processPayouts() {
     return this.post("/payouts/process");
+  }
+
+  // Transactions
+  async getTransactions(params?: Record<string, any>) {
+    return this.get("/transactions", params);
+  }
+
+  async getTransactionMetrics(params?: Record<string, any>) {
+    return this.get("/transactions/metrics", params);
+  }
+
+  async getTransaction(id: string) {
+    return this.get(`/transactions/${id}`);
+  }
+
+  // Subscription Management
+  async getSubscriptionManagement(params?: Record<string, any>) {
+    return this.get("/subscriptions/management", params);
+  }
+
+  async getSubscriptionMetrics(params?: Record<string, any>) {
+    return this.get("/subscriptions/metrics", params);
+  }
+
+  async getSubscription(id: string) {
+    return this.get(`/subscriptions/${id}`);
+  }
+
+  async bulkSubscriptionAction(data: {
+    action: "cancel" | "suspend" | "activate" | "change_plan";
+    subscriptionIds: string[];
+    planId?: string;
+  }) {
+    return this.post("/subscriptions/bulk-action", data);
+  }
+
+  async updateSubscriptionStatus(subscriptionId: string, status: string) {
+    return this.patch(`/subscriptions/${subscriptionId}/status`, { status });
+  }
+
+  async cancelSubscription(subscriptionId: string) {
+    return this.post(`/subscriptions/${subscriptionId}/cancel`);
+  }
+
+  async reactivateSubscription(subscriptionId: string) {
+    return this.post(`/subscriptions/${subscriptionId}/reactivate`);
   }
 
 }
