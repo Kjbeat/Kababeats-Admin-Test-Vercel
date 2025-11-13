@@ -275,7 +275,7 @@ export function UserDetailsPage() {
                 onSaveUser={undefined}
               />
             </TabsContent>
-
+ 
             <TabsContent value="analytics" className="p-6">
               <UserDashboardAnalytics
                 user={user}
