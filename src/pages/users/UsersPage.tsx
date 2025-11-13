@@ -52,6 +52,7 @@ export function UsersPage() {
   }
 
   const handleFiltersChange = (newFilters: UserFilters) => {
+    console.log('🔄 Filter changed from:', filters, 'to:', newFilters);
     setFilters(newFilters);
   };
 

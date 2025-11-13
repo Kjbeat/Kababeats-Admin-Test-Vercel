@@ -4,12 +4,9 @@ import {
   Users, 
   Music, 
   DollarSign, 
-  TrendingUp, 
   AlertCircle,
   Crown,
-  Download,
-  ShoppingCart,
-  UserCheck
+  ShoppingCart
 } from 'lucide-react';
 
 import { apiService } from '@/services/api';
@@ -195,14 +192,6 @@ export function DashboardPage() {
           color="blue"
         />
         <StatCard
-          title="Active Users"
-          value={stats?.activeUsers?.toLocaleString() || '0'}
-          change={`${stats?.newUsersThisMonth || 0} new this month`}
-          changeType="positive"
-          icon={UserCheck}
-          color="green"
-        />
-        <StatCard
           title="Total Revenue"
           value={formatCurrency(stats?.totalRevenue || 0)}
           change={`${formatCurrency(stats?.monthlyRevenue || 0)} this month`}
@@ -218,10 +207,6 @@ export function DashboardPage() {
           icon={Music}
           color="purple"
         />
-      </div>
-
-      {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Sales"
           value={stats?.totalSales?.toLocaleString() || '0'}
@@ -230,25 +215,17 @@ export function DashboardPage() {
           icon={ShoppingCart}
           color="orange"
         />
+      </div>
+
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
         <StatCard
-          title="Subscriptions"
-          value={stats?.totalSubscribers?.toLocaleString() || '0'}
-          change={`${stats?.activeSubscriptions || 0} active`}
+          title="Active Subscriptions"
+          value={stats?.activeSubscriptions?.toLocaleString() || '0'}
+          change={`${stats?.totalSubscribers || 0} total subscribers`}
           changeType="positive"
           icon={Crown}
           color="yellow"
-        />
-        <StatCard
-          title="Total Downloads"
-          value={stats?.totalDownloads?.toLocaleString() || '0'}
-          icon={Download}
-          color="indigo"
-        />
-        <StatCard
-          title="Avg Order Value"
-          value={formatCurrency(stats?.averageOrderValue || 0)}
-          icon={TrendingUp}
-          color="pink"
         />
       </div>
     </div>
