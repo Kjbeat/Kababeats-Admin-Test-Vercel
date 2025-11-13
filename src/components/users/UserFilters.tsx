@@ -69,6 +69,16 @@ export function UserFiltersComponent({ filters, onFiltersChange, onClearFilters 
     { value: 'false', label: 'Unverified' },
   ];
 
+  const subscriptionOptions = [
+    { value: 'all', label: 'All Subscriptions' },
+    { value: 'FREE', label: 'Free Plan' },
+    { value: 'PRO', label: 'Pro Plan' },
+    { value: 'PREMIUM', label: 'Premium Plan' },
+    { value: 'BASIC', label: 'Basic Plan' },
+    { value: 'ENTERPRISE', label: 'Enterprise Plan' },
+    { value: 'no_subscription', label: 'No Active Subscription' },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Basic Filters */}
@@ -109,6 +119,21 @@ export function UserFiltersComponent({ filters, onFiltersChange, onClearFilters 
             </SelectTrigger>
             <SelectContent>
               {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={filters.subscriptionType || 'all'}
+            onValueChange={(value) => handleFilterChange('subscriptionType', value === 'all' ? undefined : value)}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Subscription" />
+            </SelectTrigger>
+            <SelectContent>
+              {subscriptionOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -164,6 +189,24 @@ export function UserFiltersComponent({ filters, onFiltersChange, onClearFilters 
               </SelectTrigger>
               <SelectContent>
                 {verifiedOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-2 block">Subscription Plan</label>
+            <Select
+              value={filters.subscriptionType || 'all'}
+              onValueChange={(value) => handleFilterChange('subscriptionType', value === 'all' ? undefined : value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Subscription" />
+              </SelectTrigger>
+              <SelectContent>
+                {subscriptionOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

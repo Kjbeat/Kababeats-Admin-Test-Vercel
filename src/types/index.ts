@@ -93,6 +93,7 @@ export interface UserFilters {
   role?: string;
   status?: 'active' | 'suspended' | 'deleted';
   verified?: boolean;
+  subscriptionType?: string; // New subscription filter
   dateFrom?: string;
   dateTo?: string;
   page?: number;

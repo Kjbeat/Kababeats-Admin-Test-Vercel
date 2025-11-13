@@ -156,6 +156,17 @@ export function UserTable({
       ),
     },
     {
+      key: 'subscription',
+      label: 'Subscription',
+      render: (_, user) => (
+        <div className="text-sm">
+          <Badge variant="outline" className="text-xs">
+            Loading...
+          </Badge>
+        </div>
+      ),
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (_, user) => (
