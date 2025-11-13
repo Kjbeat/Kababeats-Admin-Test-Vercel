@@ -15,8 +15,8 @@ import {
   Lock,
   ScrollText,
   CreditCard as SubscriptionIcon,
+  UserCog,
   // Receipt,
-  // UserCog,
 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,10 +32,10 @@ const navigation = [
   { name: 'Beats', href: '/beats', icon: Music, permission: 'beats.view' },
   { name: 'Licenses', href: '/licenses', icon: ScrollText, permission: 'licenses.manage' },
   { name: 'Subscriptions', href: '/subscriptions', icon: SubscriptionIcon, permission: 'subscriptions.manage' },
+  { name: 'User Subscriptions', href: '/subscription-management', icon: UserCog, permission: 'users.view' },
   { name: 'Curated Playlist', href: '/content', icon: FileText, permission: 'content.manage' },
   { name: 'Sales', href: '/sales', icon: DollarSign, permission: 'sales.view' },
   // { name: 'Transactions', href: '/transactions', icon: Receipt, permission: 'transactions.view' },
-  // { name: 'Subscription Management', href: '/subscription-management', icon: UserCog, permission: 'subscription_management.view' },
   { name: 'Payouts', href: '/payouts', icon: CreditCard, permission: 'payouts.manage' },
   // { name: 'Logs', href: '/logs', icon: FileSearch, permission: 'logs.view' },
 ];

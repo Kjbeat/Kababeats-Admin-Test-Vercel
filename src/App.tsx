@@ -15,10 +15,10 @@ import { ContentPage } from '@/pages/content/ContentPage';
 import { PlaylistDetailPage } from '@/pages/content/PlaylistDetailPage';
 import { SalesPage } from '@/pages/sales/SalesPage';
 // import { TransactionsPage } from '@/pages/transactions/TransactionsPage';
-// import { SubscriptionManagementPage } from '@/pages/subscription-management/SubscriptionManagementPage';
 import { PayoutsPage } from '@/pages/payouts/PayoutsPage';
 import { LicensesPage } from '@/pages/licenses/LicensesPage';
 import { SubscriptionsPage } from '@/pages/subscriptions/SubscriptionsPage';
+import { SubscriptionManagementPage } from '@/pages/subscriptions/SubscriptionManagementPage';
 import { AdminUsersPage } from '@/pages/admin-users/AdminUsersPage';
 // import { LogsPage } from '@/pages/logs/LogsPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -70,7 +70,7 @@ function AppRoutes() {
                 <Route path="/content/:id" element={<PlaylistDetailPage />} />
                 <Route path="/licenses" element={<LicensesPage />} />
                 <Route path="/subscriptions" element={<SubscriptionsPage />} />
-                {/* <Route path="/subscription-management" element={<SubscriptionManagementPage />} /> */}
+                <Route path="/subscription-management" element={<SubscriptionManagementPage />} />
                 <Route path="/sales" element={<SalesPage />} />
                 {/* <Route path="/transactions" element={<TransactionsPage />} /> */}
                 <Route path="/payouts" element={<PayoutsPage />} />
