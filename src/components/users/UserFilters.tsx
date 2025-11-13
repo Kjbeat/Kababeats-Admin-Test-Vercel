@@ -71,7 +71,6 @@ export function UserFiltersComponent({ filters, onFiltersChange, onClearFilters 
 
   const subscriptionOptions = [
     { value: 'all', label: 'All Subscriptions' },
-    { value: 'FREE', label: 'Free Plan' },
     { value: 'BASIC', label: 'Basic Plan' },
     { value: 'PRO', label: 'Pro Plan' },
     { value: 'no_subscription', label: 'No Active Subscription' },
