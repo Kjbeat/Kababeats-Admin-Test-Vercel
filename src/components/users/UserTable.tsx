@@ -178,19 +178,19 @@ export function UserTable({
           );
         }
         
-        const getSubscriptionVariant = (status: string) => {
-          switch (status) {
-            case 'active': return 'default';
-            case 'trial': return 'secondary';
-            case 'cancelled': return 'destructive';
-            case 'expired': return 'outline';
-            default: return 'secondary';
+        const getSubscriptionVariant = (code: string) => {
+          switch (code.toUpperCase()) {
+            case 'PRO': return 'default';
+            case 'BASIC': return 'secondary'; 
+            case 'PREMIUM': return 'default';
+            case 'FREE': return 'secondary';
+            default: return 'outline';
           }
         };
         
         return (
           <div className="text-sm">
-            <Badge variant={getSubscriptionVariant(userSubscription.status)} className="text-xs">
+            <Badge variant={getSubscriptionVariant(userSubscription.planCode)} className="text-xs font-medium">
               {userSubscription.planCode}
             </Badge>
             <div className="text-xs text-muted-foreground mt-1">

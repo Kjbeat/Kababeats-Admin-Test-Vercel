@@ -254,6 +254,14 @@ class ApiService {
     return response.data.data || response.data;
   }
 
+  async getBatchUserSubscriptions(userIds: string[]) {
+    const response = await this.api.post('/test/users/batch-subscriptions', { userIds });
+    if (process.env.NODE_ENV === "development") {
+      console.log("getBatchUserSubscriptions API response:", response.data);
+    }
+    return response.data.data || {};
+  }
+
   async updateUser(id: string, data: any) {
     return this.put(`/users/${id}`, data);
   }

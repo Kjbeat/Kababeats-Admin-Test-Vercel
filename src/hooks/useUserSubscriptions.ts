@@ -16,33 +16,9 @@ export function useUserSubscriptions(userIds: string[]) {
       if (userIds.length === 0) return {};
       
       try {
-        // For now, return mock data to avoid performance issues
-        // In production, you would implement a batch API endpoint
-        const mockSubscriptions: Record<string, UserSubscriptionInfo> = {};
-        
-        // Simulate some users having subscriptions
-        userIds.forEach((userId, index) => {
-          if (index % 3 === 0) {
-            mockSubscriptions[userId] = {
-              userId,
-              planName: 'Pro Plan',
-              planCode: 'PRO',
-              status: 'active',
-              billingCycle: 'monthly'
-            };
-          } else if (index % 5 === 0) {
-            mockSubscriptions[userId] = {
-              userId,
-              planName: 'Premium Plan',
-              planCode: 'PREMIUM',
-              status: 'active',
-              billingCycle: 'yearly'
-            };
-          }
-          // Others will show as "Free" (no subscription data)
-        });
-        
-        return mockSubscriptions;
+        // Use the new batch endpoint
+        const subscriptionData = await apiService.getBatchUserSubscriptions(userIds);
+        return subscriptionData || {};
       } catch (error) {
         console.error('Error fetching user subscriptions:', error);
         return {};
