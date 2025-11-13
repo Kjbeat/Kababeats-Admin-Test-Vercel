@@ -628,65 +628,52 @@ export interface TransactionFilters {
 // Subscription Management Types
 export interface SubscriptionUser {
   _id: string;
-  userId: {
-    _id: string;
-    username: string;
-    email: string;
-    firstName?: string;
-    lastName?: string;
-    avatar?: string;
+  email: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  subscription: {
+    plan: {
+      _id: string;
+      name: string;
+      code: string;
+      priceMonthly: number;
+      priceYearly: number;
+    };
+    status: 'active' | 'inactive' | 'cancelled' | 'trial' | 'past_due';
+    startDate: string;
+    endDate?: string;
+    billingCycle: 'monthly' | 'yearly';
+    autoRenew: boolean;
+    trialEndsAt?: string;
+    isTrialActive?: boolean;
+    usage?: {
+      downloadsThisMonth: number;
+      uploadsThisMonth: number;
+      storageUsedMB: number;
+    };
   };
-  planId: {
-    _id: string;
-    name: string;
-    code: string;
-    priceMonthly: number;
-    priceYearly: number;
-    features: string[];
+  paymentMethod?: {
+    type: string;
+    last4?: string;
+    brand?: string;
   };
-  type: 'free' | 'monthly' | 'yearly' | 'lifetime';
-  status: 'active' | 'cancelled' | 'expired' | 'pending' | 'suspended' | 'downgrading';
-  currentPeriodStart: string;
-  currentPeriodEnd?: string;
-  nextBillingDate?: string;
-  cancelAt?: string;
-  canceledAt?: string;
-  amount: number;
-  currency: string;
-  paymentMethod?: string;
-  paymentProvider?: string;
-  subscriptionId?: string;
-  autoRenew: boolean;
-  trialEndsAt?: string;
-  isInTrial: boolean;
-  downgradeTo?: {
-    planId: string;
-    planName: string;
-    effectiveDate: string;
-  };
-  usage: {
-    uploadsThisMonth: number;
-    aiCreditsUsed: number;
-    storageUsedMB: number;
-  };
+  totalSpent: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface SubscriptionManagementFilters {
   search?: string;
-  type?: 'free' | 'monthly' | 'yearly' | 'lifetime' | 'all';
-  status?: 'active' | 'cancelled' | 'expired' | 'pending' | 'suspended' | 'downgrading' | 'all';
+  status?: 'active' | 'inactive' | 'cancelled' | 'trial' | 'past_due' | 'all';
   planId?: string;
-  paymentProvider?: 'stripe' | 'paypal' | 'paystack' | 'flutterwave' | 'all';
-  isInTrial?: boolean;
+  billingCycle?: 'monthly' | 'yearly' | 'all';
+  provider?: 'stripe' | 'paypal' | 'paystack' | 'all';
   autoRenew?: boolean;
   dateFrom?: string;
   dateTo?: string;
-  billingDateFrom?: string;
-  billingDateTo?: string;
   page?: number;
   limit?: number;
-  sortBy?: 'createdAt' | 'nextBillingDate' | 'amount' | 'status' | 'type';
+  sortBy?: 'createdAt' | 'updatedAt' | 'amount' | 'status' | 'username';
   sortOrder?: 'asc' | 'desc';
 }

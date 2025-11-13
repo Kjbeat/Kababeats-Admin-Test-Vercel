@@ -48,11 +48,10 @@ export function SubscriptionManagementPage() {
   const [metrics, setMetrics] = useState<SubscriptionMetrics | null>(null);
   const [pagination, setPagination] = useState({ totalPages: 1, totalRecords: 0 });
   const [filters, setFilters] = useState<SubscriptionManagementFilters>({
-    type: 'all',
     status: 'all',
     planId: '',
-    paymentProvider: 'all',
-    isInTrial: undefined,
+    billingCycle: 'all',
+    provider: 'all',
     autoRenew: undefined,
     sortBy: 'createdAt',
     sortOrder: 'desc'
@@ -86,10 +85,8 @@ export function SubscriptionManagementPage() {
     ];
 
     const rows = subscriptions.map(subscription => {
-      const user = subscription.userId;
-      const plan = subscription.planId;
-      const nextBilling = subscription.nextBillingDate ? new Date(subscription.nextBillingDate).toISOString().split('T')[0] : '';
-      const trialEnds = subscription.trialEndsAt ? new Date(subscription.trialEndsAt).toISOString().split('T')[0] : '';
+      const nextBilling = subscription.subscription.endDate ? new Date(subscription.subscription.endDate).toISOString().split('T')[0] : '';
+      const trialEnds = subscription.subscription.trialEndsAt ? new Date(subscription.subscription.trialEndsAt).toISOString().split('T')[0] : '';
       const createdDate = new Date(subscription.createdAt).toISOString().split('T')[0];
 
       const escape = (value: string): string => {
@@ -98,18 +95,18 @@ export function SubscriptionManagementPage() {
       };
 
       return [
-        escape(user._id),
-        escape(user.username),
-        escape(user.email),
-        escape(plan.name),
-        escape(subscription.type),
-        escape(subscription.status),
-        subscription.amount.toFixed(2),
-        escape(subscription.currency),
+        escape(subscription._id),
+        escape(subscription.username),
+        escape(subscription.email),
+        escape(subscription.subscription.plan.name),
+        escape(subscription.subscription.billingCycle),
+        escape(subscription.subscription.status),
+        subscription.totalSpent.toFixed(2),
+        'USD', // Default currency since it's not in the new structure
         escape(nextBilling),
-        subscription.autoRenew ? 'Yes' : 'No',
+        subscription.subscription.autoRenew ? 'Yes' : 'No',
         escape(trialEnds),
-        escape(subscription.paymentProvider || ''),
+        escape(subscription.paymentMethod?.type || ''),
         escape(createdDate)
       ].join(',');
     });
@@ -234,11 +231,10 @@ export function SubscriptionManagementPage() {
 
   const clearFilters = () => {
     setFilters({
-      type: 'all',
       status: 'all',
       planId: '',
-      paymentProvider: 'all',
-      isInTrial: undefined,
+      billingCycle: 'all',
+      provider: 'all',
       autoRenew: undefined,
       sortBy: 'createdAt',
       sortOrder: 'desc'
@@ -264,21 +260,6 @@ export function SubscriptionManagementPage() {
         return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'free':
-        return <User className="h-4 w-4 text-gray-500" />;
-      case 'monthly':
-        return <Calendar className="h-4 w-4 text-blue-500" />;
-      case 'yearly':
-        return <BarChart3 className="h-4 w-4 text-green-500" />;
-      case 'lifetime':
-        return <Crown className="h-4 w-4 text-purple-500" />;
-      default:
-        return <CreditCard className="h-4 w-4" />;
     }
   };
 
@@ -538,17 +519,15 @@ export function SubscriptionManagementPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Billing Cycle</label>
             <select
-              value={filters.type}
-              onChange={(e) => handleFilterChange({type: e.target.value as any})}
+              value={filters.billingCycle}
+              onChange={(e) => handleFilterChange({billingCycle: e.target.value as any})}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="all">All Types</option>
-              <option value="free">Free</option>
+              <option value="all">All Cycles</option>
               <option value="monthly">Monthly</option>
               <option value="yearly">Yearly</option>
-              <option value="lifetime">Lifetime</option>
             </select>
           </div>
           
@@ -588,17 +567,16 @@ export function SubscriptionManagementPage() {
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Trial Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Provider</label>
                 <select
-                  value={filters.isInTrial !== undefined ? (filters.isInTrial ? 'true' : 'false') : 'all'}
-                  onChange={(e) => handleFilterChange({
-                    isInTrial: e.target.value === 'all' ? undefined : e.target.value === 'true'
-                  })}
+                  value={filters.provider}
+                  onChange={(e) => handleFilterChange({provider: e.target.value as any})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="all">All Users</option>
-                  <option value="true">In Trial</option>
-                  <option value="false">Not In Trial</option>
+                  <option value="all">All Providers</option>
+                  <option value="stripe">Stripe</option>
+                  <option value="paypal">PayPal</option>
+                  <option value="paystack">Paystack</option>
                 </select>
               </div>
               
@@ -618,18 +596,14 @@ export function SubscriptionManagementPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Provider</label>
-                <select
-                  value={filters.paymentProvider}
-                  onChange={(e) => handleFilterChange({paymentProvider: e.target.value as any})}
+                <label className="block text-sm font-medium text-gray-700 mb-1">Plan Filter</label>
+                <input
+                  type="text"
+                  placeholder="Filter by plan..."
+                  value={filters.planId || ''}
+                  onChange={(e) => handleFilterChange({planId: e.target.value})}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="all">All Providers</option>
-                  <option value="stripe">Stripe</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="paystack">Paystack</option>
-                  <option value="flutterwave">Flutterwave</option>
-                </select>
+                />
               </div>
               
               <div>
@@ -753,21 +727,17 @@ export function SubscriptionManagementPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
-                        {subscription.userId.avatar ? (
-                          <img className="h-10 w-10 rounded-full" src={subscription.userId.avatar} alt="" />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                            <User className="h-5 w-5 text-gray-400" />
-                          </div>
-                        )}
+                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                          <User className="h-5 w-5 text-gray-400" />
+                        </div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {subscription.userId.username}
+                          {subscription.username}
                         </div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Mail className="h-3 w-3 mr-1" />
-                          {subscription.userId.email}
+                          {subscription.email}
                         </div>
                       </div>
                     </div>
@@ -775,77 +745,82 @@ export function SubscriptionManagementPage() {
                   
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      {subscription.planId.name}
+                      {subscription.subscription.plan.name}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {subscription.planId.code}
+                      {subscription.subscription.plan.code}
                     </div>
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {getTypeIcon(subscription.type)}
                       <span className="ml-2 text-sm font-medium text-gray-900 capitalize">
-                        {subscription.type}
+                        {subscription.subscription.billingCycle}
                       </span>
                     </div>
-                    {subscription.isInTrial && (
+                    {subscription.subscription.isTrialActive && (
                       <div className="text-xs text-orange-500 mt-1">
-                        Trial ends: {formatDate(subscription.trialEndsAt)}
+                        Trial ends: {formatDate(subscription.subscription.trialEndsAt)}
                       </div>
                     )}
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      {getStatusIcon(subscription.status)}
-                      <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(subscription.status)}`}>
-                        {subscription.status}
+                      {getStatusIcon(subscription.subscription.status)}
+                      <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(subscription.subscription.status)}`}>
+                        {subscription.subscription.status}
                       </span>
                     </div>
-                    {subscription.downgradeTo && (
-                      <div className="text-xs text-orange-500 mt-1">
-                        Downgrading to: {subscription.downgradeTo.planName}
+                    {subscription.subscription.isTrialActive && (
+                      <div className="text-xs text-blue-500 mt-1">
+                        Trial ends: {formatDate(subscription.subscription.trialEndsAt)}
                       </div>
                     )}
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-semibold text-gray-900">
-                      {formatCurrency(subscription.amount)}
+                      {formatCurrency(subscription.totalSpent)}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {subscription.currency.toUpperCase()}
+                      {subscription.subscription.plan.name}
                     </div>
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <Calendar className="h-4 w-4 mr-1 text-gray-400" />
-                      {formatDate(subscription.nextBillingDate)}
+                      {subscription.subscription.endDate ? formatDate(subscription.subscription.endDate) : 'N/A'}
                     </div>
-                    {subscription.paymentProvider && (
+                    {subscription.paymentMethod && (
                       <div className="text-xs text-gray-500 mt-1 capitalize">
-                        {subscription.paymentProvider}
+                        {subscription.paymentMethod.type}
                       </div>
                     )}
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                      subscription.autoRenew 
+                      subscription.subscription.autoRenew 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {subscription.autoRenew ? 'Yes' : 'No'}
+                      {subscription.subscription.autoRenew ? 'Yes' : 'No'}
                     </span>
                   </td>
                   
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-xs text-gray-500">
-                      <div>Uploads: {subscription.usage.uploadsThisMonth}</div>
-                      <div>AI Credits: {subscription.usage.aiCreditsUsed}</div>
-                      <div>Storage: {(subscription.usage.storageUsedMB / 1024).toFixed(1)}GB</div>
+                      {subscription.subscription.usage ? (
+                        <>
+                          <div>Downloads: {subscription.subscription.usage.downloadsThisMonth}</div>
+                          <div>Uploads: {subscription.subscription.usage.uploadsThisMonth}</div>
+                          <div>Storage: {(subscription.subscription.usage.storageUsedMB / 1024).toFixed(1)}GB</div>
+                        </>
+                      ) : (
+                        <div>No usage data</div>
+                      )}
                     </div>
                   </td>
                   
