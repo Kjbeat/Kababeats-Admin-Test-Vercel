@@ -2,6 +2,8 @@ import {
   SubscriptionPlan,
   CreateSubscriptionPlanRequest,
   UpdateSubscriptionPlanRequest,
+  SubscriptionManagementFiltersType,
+  SubscriptionManagementResponse,
 } from "@/types/subscription";
 import { apiService } from "./api";
 
@@ -28,6 +30,10 @@ class SubscriptionApiService {
 
   async toggleSubscriptionPlan(id: string, isActive: boolean): Promise<SubscriptionPlan> {
     return apiService.patch<SubscriptionPlan>(`/subscription-plan/${id}/toggle`, { isActive });
+  }
+
+  async getSubscriptionManagement(filters: SubscriptionManagementFiltersType): Promise<SubscriptionManagementResponse> {
+    return apiService.get<SubscriptionManagementResponse>("/subscriptions/management", filters);
   }
 }
 

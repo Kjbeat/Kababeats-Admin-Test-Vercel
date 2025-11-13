@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { subscriptionApiService } from '@/services/subscriptionApi';
-import { SubscriptionPlan, CreateSubscriptionPlanRequest, UpdateSubscriptionPlanRequest } from '@/types/subscription';
+import { SubscriptionPlan, CreateSubscriptionPlanRequest, UpdateSubscriptionPlanRequest, SubscriptionManagementFiltersType } from '@/types/subscription';
 import { useToast } from '@/components/ui/use-toast';
 
 // Query keys
@@ -10,6 +10,8 @@ export const subscriptionKeys = {
   list: (filters: string) => [...subscriptionKeys.lists(), { filters }] as const,
   details: () => [...subscriptionKeys.all, 'detail'] as const,
   detail: (id: string) => [...subscriptionKeys.details(), id] as const,
+  management: () => [...subscriptionKeys.all, 'management'] as const,
+  managementList: (filters: SubscriptionManagementFiltersType) => [...subscriptionKeys.management(), { filters }] as const,
 };
 
 // Get all subscription plans
@@ -128,5 +130,14 @@ export function useToggleSubscriptionPlan() {
         variant: 'destructive',
       });
     },
+  });
+}
+
+// Get subscription management data (user subscriptions)
+export function useSubscriptionManagement(filters: SubscriptionManagementFiltersType = {}) {
+  return useQuery({
+    queryKey: subscriptionKeys.managementList(filters),
+    queryFn: () => subscriptionApiService.getSubscriptionManagement(filters),
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
