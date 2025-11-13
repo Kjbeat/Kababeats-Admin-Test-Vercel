@@ -1,41 +1,96 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, Music, DollarSign, TrendingUp, Activity, BarChart3, AlertCircle } from 'lucide-react';
+import { 
+  Users, 
+  Music, 
+  DollarSign, 
+  TrendingUp, 
+  Activity, 
+  AlertCircle,
+  Crown,
+  Download,
+  Upload,
+  ShoppingCart,
+  UserCheck,
+  CreditCard,
+  Star
+} from 'lucide-react';
 
 import { apiService } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { cn } from '@/lib/utils';
 
 interface DashboardStats {
-  totalUsers?: number;
-  totalBeats?: number;
-  totalRevenue?: number;
-  monthlySales?: number;
-  revenueMetrics?: {
-    today: number;
-    thisMonth: number;
-    last7Days: number;
-  };
-  systemStatus?: {
-    pm2: 'online' | 'offline' | 'error';
-    server: 'online' | 'offline' | 'error';
-    nginx: 'online' | 'offline' | 'error';
-    ssl: 'valid' | 'expired' | 'error';
-    agenda: 'running' | 'stopped' | 'error';
-    database: 'connected' | 'disconnected' | 'error';
-    redis: 'connected' | 'disconnected' | 'error';
-    mongodb: 'connected' | 'disconnected' | 'error';
-    diskSpace: {
-      used: number;
-      total: number;
-      percentage: number;
-    };
-  };
-  recentActivity?: Array<{
+  // User Metrics
+  totalUsers: number;
+  activeUsers: number;
+  newUsersThisMonth: number;
+  userGrowthRate: number;
+  
+  // Content Metrics
+  totalBeats: number;
+  newBeatsThisMonth: number;
+  totalDownloads: number;
+  totalUploads: number;
+  
+  // Financial Metrics
+  totalRevenue: number;
+  monthlyRevenue: number;
+  dailyRevenue: number;
+  averageOrderValue: number;
+  
+  // Sales Metrics
+  totalSales: number;
+  salesThisMonth: number;
+  topSellingBeats: Array<{
     id: string;
+    title: string;
+    producer: string;
+    sales: number;
+    revenue: number;
+  }>;
+  
+  // Subscription Metrics
+  totalSubscribers: number;
+  activeSubscriptions: number;
+  trialSubscriptions: number;
+  cancelledSubscriptions: number;
+  subscriptionRevenue: number;
+  
+  // Engagement Metrics
+  totalPlays: number;
+  averageSessionTime: number;
+  mostPlayedGenres: Array<{
+    genre: string;
+    plays: number;
+  }>;
+  
+  // Producer Metrics
+  topProducers: Array<{
+    id: string;
+    username: string;
+    totalBeats: number;
+    totalSales: number;
+    revenue: number;
+  }>;
+  
+  // Recent Activity
+  recentActivity: Array<{
+    id: string;
+    type: 'user_registration' | 'beat_upload' | 'purchase' | 'subscription' | 'payout';
     description: string;
     timestamp: string;
+    amount?: number;
   }>;
+  
+  // System Health
+  systemStatus: {
+    status: 'healthy' | 'warning' | 'critical';
+    uptime: string;
+    lastBackup: string;
+    errorRate: number;
+    responseTime: number;
+  };
 }
 
 interface StatCardProps {
@@ -112,110 +167,229 @@ export function DashboardPage() {
     );
   }
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  };
+
+  const formatGrowthRate = (rate: number) => {
+    return `${rate >= 0 ? '+' : ''}${rate.toFixed(1)}%`;
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Overview of your platform's performance and activity
+        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          Comprehensive overview of your platform's performance, users, and revenue
         </p>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Key Performance Indicators */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
-          value={(stats as DashboardStats)?.totalUsers || 0}
-          change="+12%"
-          changeType="positive"
+          value={stats?.totalUsers?.toLocaleString() || '0'}
+          change={stats?.userGrowthRate ? formatGrowthRate(stats.userGrowthRate) : undefined}
+          changeType={stats?.userGrowthRate && stats.userGrowthRate > 0 ? 'positive' : 'negative'}
           icon={Users}
           color="blue"
         />
         <StatCard
-          title="Total Beats"
-          value={(stats as DashboardStats)?.totalBeats || 0}
-          change="+8%"
+          title="Active Users"
+          value={stats?.activeUsers?.toLocaleString() || '0'}
+          change={`${stats?.newUsersThisMonth || 0} new this month`}
           changeType="positive"
-          icon={Music}
+          icon={UserCheck}
           color="green"
         />
         <StatCard
           title="Total Revenue"
-          value={`$${(stats as DashboardStats)?.totalRevenue?.toLocaleString() || 0}`}
-          change="+23%"
+          value={formatCurrency(stats?.totalRevenue || 0)}
+          change={`${formatCurrency(stats?.monthlyRevenue || 0)} this month`}
           changeType="positive"
           icon={DollarSign}
+          color="emerald"
+        />
+        <StatCard
+          title="Total Beats"
+          value={stats?.totalBeats?.toLocaleString() || '0'}
+          change={`${stats?.newBeatsThisMonth || 0} new this month`}
+          changeType="positive"
+          icon={Music}
+          color="purple"
+        />
+      </div>
+
+      {/* Secondary Metrics */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Sales"
+          value={stats?.totalSales?.toLocaleString() || '0'}
+          change={`${stats?.salesThisMonth || 0} this month`}
+          changeType="positive"
+          icon={ShoppingCart}
+          color="orange"
+        />
+        <StatCard
+          title="Subscriptions"
+          value={stats?.totalSubscribers?.toLocaleString() || '0'}
+          change={`${stats?.activeSubscriptions || 0} active`}
+          changeType="positive"
+          icon={Crown}
           color="yellow"
         />
         <StatCard
-          title="Monthly Sales"
-          value={(stats as DashboardStats)?.monthlySales || 0}
-          change="+15%"
-          changeType="positive"
+          title="Total Downloads"
+          value={stats?.totalDownloads?.toLocaleString() || '0'}
+          icon={Download}
+          color="indigo"
+        />
+        <StatCard
+          title="Avg Order Value"
+          value={formatCurrency(stats?.averageOrderValue || 0)}
           icon={TrendingUp}
-          color="purple"
+          color="pink"
         />
       </div>
 
-      {/* Revenue Metrics */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-        <StatCard
-          title="Today's Revenue"
-          value={`$${(stats as DashboardStats)?.revenueMetrics?.today?.toLocaleString() || 0}`}
-          icon={DollarSign}
-          color="green"
-        />
-        <StatCard
-          title="This Month"
-          value={`$${(stats as DashboardStats)?.revenueMetrics?.thisMonth?.toLocaleString() || 0}`}
-          icon={TrendingUp}
-          color="blue"
-        />
-        <StatCard
-          title="Last 7 Days"
-          value={`$${(stats as DashboardStats)?.revenueMetrics?.last7Days?.toLocaleString() || 0}`}
-          icon={BarChart3}
-          color="purple"
-        />
-      </div>
-
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 gap-6">
-        {/* Revenue Chart */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Revenue Overview
-              </h3>
-              <BarChart3 className="h-5 w-5 text-gray-400" />
+      {/* Charts and Analytics Section */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Top Selling Beats */}
+        <div className="bg-white shadow-lg rounded-lg border">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Top Selling Beats</h3>
+              <Star className="h-5 w-5 text-yellow-500" />
             </div>
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-              <div className="text-center">
-                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Chart visualization coming soon</p>
+          </div>
+          <div className="p-6">
+            {stats?.topSellingBeats && stats.topSellingBeats.length > 0 ? (
+              <div className="space-y-4">
+                {stats.topSellingBeats.slice(0, 5).map((beat, index) => (
+                  <div key={beat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-white text-sm font-semibold">#{index + 1}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{beat.title}</p>
+                        <p className="text-sm text-gray-500">by {beat.producer}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{beat.sales} sales</p>
+                      <p className="text-sm text-green-600">{formatCurrency(beat.revenue)}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="text-center py-8">
+                <Music className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No sales data available</p>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Top Producers */}
+        <div className="bg-white shadow-lg rounded-lg border">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Top Producers</h3>
+              <Users className="h-5 w-5 text-blue-500" />
+            </div>
+          </div>
+          <div className="p-6">
+            {stats?.topProducers && stats.topProducers.length > 0 ? (
+              <div className="space-y-4">
+                {stats.topProducers.slice(0, 5).map((producer, index) => (
+                  <div key={producer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                          <span className="text-white text-sm font-semibold">#{index + 1}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{producer.username}</p>
+                        <p className="text-sm text-gray-500">{producer.totalBeats} beats</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-gray-900">{producer.totalSales} sales</p>
+                      <p className="text-sm text-green-600">{formatCurrency(producer.revenue)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No producer data available</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Subscription Analytics */}
+      <div className="bg-white shadow-lg rounded-lg border">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Subscription Overview</h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats?.totalSubscribers || 0}</div>
+              <div className="text-sm text-gray-500">Total Subscribers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{stats?.activeSubscriptions || 0}</div>
+              <div className="text-sm text-gray-500">Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{stats?.trialSubscriptions || 0}</div>
+              <div className="text-sm text-gray-500">Trials</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-600">{stats?.cancelledSubscriptions || 0}</div>
+              <div className="text-sm text-gray-500">Cancelled</div>
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-900">
+                {formatCurrency(stats?.subscriptionRevenue || 0)}
+              </div>
+              <div className="text-sm text-gray-500">Monthly Subscription Revenue</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Recent Activity */}
-      {(stats as DashboardStats)?.recentActivity && (stats as DashboardStats).recentActivity!.length > 0 && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Recent Activity
-            </h3>
+      <div className="bg-white shadow-lg rounded-lg border">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+            <Activity className="h-5 w-5 text-gray-400" />
+          </div>
+        </div>
+        <div className="p-6">
+          {stats?.recentActivity && stats.recentActivity.length > 0 ? (
             <div className="flow-root">
               <ul className="-mb-8">
-                {(stats as DashboardStats).recentActivity!.slice(0, 5).map((activity: { id: string; description: string; timestamp: string }, activityIdx: number) => (
-                  <li key={activity.id || `activity-${activityIdx}`}>
+                {stats.recentActivity.slice(0, 8).map((activity, activityIdx) => (
+                  <li key={activity.id}>
                     <div className="relative pb-8">
-                      {activityIdx !== (stats as DashboardStats).recentActivity!.length - 1 ? (
+                      {activityIdx !== stats.recentActivity!.length - 1 ? (
                         <span
                           className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
                           aria-hidden="true"
@@ -223,17 +397,34 @@ export function DashboardPage() {
                       ) : null}
                       <div className="relative flex space-x-3">
                         <div>
-                          <span className="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center ring-8 ring-white">
-                            <Activity className="h-4 w-4 text-white" />
+                          <span className={cn(
+                            "h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white",
+                            activity.type === 'user_registration' && "bg-blue-500",
+                            activity.type === 'beat_upload' && "bg-purple-500",
+                            activity.type === 'purchase' && "bg-green-500",
+                            activity.type === 'subscription' && "bg-yellow-500",
+                            activity.type === 'payout' && "bg-indigo-500"
+                          )}>
+                            {activity.type === 'user_registration' && <Users className="h-4 w-4 text-white" />}
+                            {activity.type === 'beat_upload' && <Upload className="h-4 w-4 text-white" />}
+                            {activity.type === 'purchase' && <ShoppingCart className="h-4 w-4 text-white" />}
+                            {activity.type === 'subscription' && <Crown className="h-4 w-4 text-white" />}
+                            {activity.type === 'payout' && <CreditCard className="h-4 w-4 text-white" />}
                           </span>
                         </div>
                         <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                           <div>
-                            <p className="text-sm text-gray-500">{activity.description}</p>
+                            <p className="text-sm text-gray-600">{activity.description}</p>
+                            {activity.amount && (
+                              <p className="text-sm font-semibold text-green-600">
+                                {formatCurrency(activity.amount)}
+                              </p>
+                            )}
                           </div>
                           <div className="text-right text-sm whitespace-nowrap text-gray-500">
                             <time dateTime={activity.timestamp}>
-                              {new Date(activity.timestamp).toLocaleDateString()}
+                              {new Date(activity.timestamp).toLocaleDateString()} at{' '}
+                              {new Date(activity.timestamp).toLocaleTimeString()}
                             </time>
                           </div>
                         </div>
@@ -243,197 +434,54 @@ export function DashboardPage() {
                 ))}
               </ul>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-8">
+              <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No recent activity</p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
-      {/* System Status */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-            System Status
-          </h3>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* PM2 Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      {/* System Health */}
+      <div className="bg-white shadow-lg rounded-lg border">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">System Health</h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                <div className={cn(
+                  "w-3 h-3 rounded-full mr-3",
+                  stats?.systemStatus?.status === 'healthy' ? 'bg-green-400' :
+                  stats?.systemStatus?.status === 'warning' ? 'bg-yellow-400' : 'bg-red-400'
+                )}>
                 </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">PM2</span>
+                <span className="text-sm font-medium text-gray-900">System Status</span>
               </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.pm2 === 'online' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.pm2 === 'offline'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.pm2 || 'online'}
+              <span className={cn(
+                "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+                stats?.systemStatus?.status === 'healthy' ? 'bg-green-100 text-green-800' :
+                stats?.systemStatus?.status === 'warning' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+              )}>
+                {stats?.systemStatus?.status || 'healthy'}
               </span>
             </div>
-
-            {/* Server Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">Server</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.server === 'online' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.server === 'offline'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.server || 'online'}
-              </span>
+            
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="text-sm font-medium text-gray-900">Uptime</div>
+              <div className="text-sm text-gray-600">{stats?.systemStatus?.uptime || 'N/A'}</div>
             </div>
-
-            {/* Nginx Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">Nginx</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.nginx === 'online' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.nginx === 'offline'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.nginx || 'online'}
-              </span>
+            
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="text-sm font-medium text-gray-900">Error Rate</div>
+              <div className="text-sm text-gray-600">{stats?.systemStatus?.errorRate || 0}%</div>
             </div>
-
-            {/* SSL Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">SSL</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.ssl === 'valid' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.ssl === 'expired'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.ssl || 'valid'}
-              </span>
-            </div>
-
-            {/* Agenda Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">Agenda</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.agenda === 'running' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.agenda === 'stopped'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.agenda || 'running'}
-              </span>
-            </div>
-
-            {/* Database Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">Database</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.database === 'connected' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.database === 'disconnected'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.database || 'connected'}
-              </span>
-            </div>
-
-            {/* Redis Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">Redis</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.redis === 'connected' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.redis === 'disconnected'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.redis || 'connected'}
-              </span>
-            </div>
-
-            {/* MongoDB Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">MongoDB</span>
-              </div>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                (stats as DashboardStats)?.systemStatus?.mongodb === 'connected' 
-                  ? 'bg-green-100 text-green-800' 
-                  : (stats as DashboardStats)?.systemStatus?.mongodb === 'disconnected'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {(stats as DashboardStats)?.systemStatus?.mongodb || 'connected'}
-              </span>
-            </div>
-
-            {/* Disk Space Status */}
-            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className={`w-2 h-2 rounded-full ${
-                    ((stats as DashboardStats)?.systemStatus?.diskSpace?.percentage || 0) > 90 
-                      ? 'bg-red-400' 
-                      : ((stats as DashboardStats)?.systemStatus?.diskSpace?.percentage || 0) > 80
-                      ? 'bg-yellow-400'
-                      : 'bg-green-400'
-                  }`}></div>
-                </div>
-                <span className="ml-3 text-sm font-medium text-gray-900">Disk Space</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  ((stats as DashboardStats)?.systemStatus?.diskSpace?.percentage || 0) > 90 
-                    ? 'bg-red-100 text-red-800' 
-                    : ((stats as DashboardStats)?.systemStatus?.diskSpace?.percentage || 0) > 80
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-green-100 text-green-800'
-                }`}>
-                  {(stats as DashboardStats)?.systemStatus?.diskSpace?.percentage || 0}%
-                </span>
-                <span className="text-xs text-gray-500 mt-1">
-                  {((stats as DashboardStats)?.systemStatus?.diskSpace?.used || 0).toFixed(1)}GB / {((stats as DashboardStats)?.systemStatus?.diskSpace?.total || 0).toFixed(1)}GB
-                </span>
-              </div>
+            
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="text-sm font-medium text-gray-900">Response Time</div>
+              <div className="text-sm text-gray-600">{stats?.systemStatus?.responseTime || 0}ms</div>
             </div>
           </div>
         </div>
