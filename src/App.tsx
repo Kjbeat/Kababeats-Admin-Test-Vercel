@@ -70,7 +70,7 @@ function AppRoutes() {
                 <Route path="/content/:id" element={<PlaylistDetailPage />} />
                 <Route path="/licenses" element={<LicensesPage />} />
                 <Route path="/subscriptions" element={<SubscriptionsPage />} />
-                <Route path="/subscription-management" element={<SubscriptionManagementPage />} />
+                {/* <Route path="/subscription-management" element={<SubscriptionManagementPage />} /> */}
                 <Route path="/sales" element={<SalesPage />} />
                 {/* <Route path="/transactions" element={<TransactionsPage />} /> */}
                 <Route path="/payouts" element={<PayoutsPage />} />
