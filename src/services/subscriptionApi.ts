@@ -33,7 +33,29 @@ class SubscriptionApiService {
   }
 
   async getSubscriptionManagement(filters: SubscriptionManagementFiltersType): Promise<SubscriptionManagementResponse> {
-    return apiService.get<SubscriptionManagementResponse>("/subscriptions/management", filters);
+    // Clean params - remove undefined values, similar to how getUsers does it
+    const cleanParams = filters
+      ? Object.fromEntries(
+          Object.entries(filters).filter(
+            ([_, value]) =>
+              value !== undefined && value !== null && value !== "" && value !== "all"
+          )
+        )
+      : {};
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("getSubscriptionManagement API request params:", cleanParams);
+    }
+
+    const response = await apiService.get<SubscriptionManagementResponse>("/subscriptions/management", cleanParams);
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("getSubscriptionManagement API response:", response);
+    }
+
+    // Backend returns { success, data, pagination, metrics }
+    // Return the full response structure
+    return response as SubscriptionManagementResponse;
   }
 }
 
