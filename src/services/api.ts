@@ -255,11 +255,15 @@ class ApiService {
   }
 
   async getBatchUserSubscriptions(userIds: string[]) {
-    const response = await this.api.post('/test/users/batch-subscriptions', { userIds });
-    if (process.env.NODE_ENV === "development") {
-      console.log("getBatchUserSubscriptions API response:", response.data);
+    console.log('🚀 API: Calling batch subscriptions with userIds:', userIds);
+    try {
+      const response = await this.api.post('/test/users/batch-subscriptions', { userIds });
+      console.log('✅ API: Batch subscriptions response:', response.data);
+      return response.data.data || {};
+    } catch (error) {
+      console.error('❌ API: Batch subscriptions error:', error);
+      throw error;
     }
-    return response.data.data || {};
   }
 
   async updateUser(id: string, data: any) {

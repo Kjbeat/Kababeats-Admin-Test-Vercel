@@ -52,7 +52,9 @@ export function UserTable({
   if (process.env.NODE_ENV === 'development') {
     console.log('UserTable - users:', users);
     console.log('UserTable - loading:', loading);
+    console.log('UserTable - userIds:', userIds);
     console.log('UserTable - subscriptionsData:', subscriptionsData);
+    console.log('UserTable - subscriptionsLoading:', subscriptionsLoading);
     console.log('UserTable - users.length:', users?.length);
   }
 
@@ -156,7 +158,9 @@ export function UserTable({
       key: 'subscription',
       label: 'Subscription',
       render: (_, user: User) => {
-        const userSubscription = subscriptionsData?.[user._id];
+        // First check if subscription data came directly with the user
+        const userSub = (user as any)?.subscription;
+        const batchUserSubscription = subscriptionsData?.[user._id];
         
         if (subscriptionsLoading) {
           return (
@@ -168,7 +172,10 @@ export function UserTable({
           );
         }
         
-        if (!userSubscription) {
+        // Use batch subscription data if available, otherwise use inline data
+        const subscriptionInfo = batchUserSubscription || userSub;
+        
+        if (!subscriptionInfo) {
           return (
             <div className="text-sm">
               <Badge variant="secondary" className="text-xs">
@@ -190,11 +197,11 @@ export function UserTable({
         
         return (
           <div className="text-sm">
-            <Badge variant={getSubscriptionVariant(userSubscription.planCode)} className="text-xs font-medium">
-              {userSubscription.planCode}
+            <Badge variant={getSubscriptionVariant(subscriptionInfo.planCode)} className="text-xs font-medium">
+              {subscriptionInfo.planCode}
             </Badge>
             <div className="text-xs text-muted-foreground mt-1">
-              {userSubscription.status} • {userSubscription.billingCycle}
+              {subscriptionInfo.status?.toLowerCase()} • {subscriptionInfo.billingCycle}
             </div>
           </div>
         );

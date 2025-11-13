@@ -16,11 +16,13 @@ export function useUserSubscriptions(userIds: string[]) {
       if (userIds.length === 0) return {};
       
       try {
+        console.log('🔍 Fetching subscriptions for user IDs:', userIds);
         // Use the new batch endpoint
         const subscriptionData = await apiService.getBatchUserSubscriptions(userIds);
+        console.log('📊 Subscription data received:', subscriptionData);
         return subscriptionData || {};
       } catch (error) {
-        console.error('Error fetching user subscriptions:', error);
+        console.error('❌ Error fetching user subscriptions:', error);
         return {};
       }
     },
