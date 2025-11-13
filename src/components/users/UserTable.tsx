@@ -1,9 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { MoreHorizontal, Eye, Edit, UserX, UserCheck } from 'lucide-react';
+import { MoreHorizontal, Eye, UserX, UserCheck } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
+import { User } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserSubscriptions } from '@/hooks/useUserSubscriptions';
 
 type TableColumn<T> = {
   key: keyof T | string;
@@ -12,12 +18,6 @@ type TableColumn<T> = {
   render?: (value: any, item: T) => React.ReactNode;
   className?: string;
 };
-import { Badge } from '@/components/ui/badge';
-import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/DropdownMenu';
-import { User } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
 
 interface UserTableProps {
   users: User[];
@@ -40,22 +40,19 @@ interface UserTableProps {
 export function UserTable({
   users,
   loading,
-  pagination,
-  onSort,
-  onViewUser,
-  onEditUser,
-  onSuspendUser,
-  onActivateUser,
-  sortKey,
-  sortDirection,
 }: UserTableProps) {
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
+  
+  // Extract user IDs for subscription data fetching
+  const userIds = users.map(user => user._id);
+  const { data: subscriptionsData, isLoading: subscriptionsLoading } = useUserSubscriptions(userIds);
   
   // Debug logging (remove in production)
   if (process.env.NODE_ENV === 'development') {
     console.log('UserTable - users:', users);
     console.log('UserTable - loading:', loading);
+    console.log('UserTable - subscriptionsData:', subscriptionsData);
     console.log('UserTable - users.length:', users?.length);
   }
 
@@ -158,13 +155,50 @@ export function UserTable({
     {
       key: 'subscription',
       label: 'Subscription',
-      render: (_, user) => (
-        <div className="text-sm">
-          <Badge variant="outline" className="text-xs">
-            Loading...
-          </Badge>
-        </div>
-      ),
+      render: (_, user: User) => {
+        const userSubscription = subscriptionsData?.[user._id];
+        
+        if (subscriptionsLoading) {
+          return (
+            <div className="text-sm">
+              <Badge variant="outline" className="text-xs">
+                Loading...
+              </Badge>
+            </div>
+          );
+        }
+        
+        if (!userSubscription) {
+          return (
+            <div className="text-sm">
+              <Badge variant="secondary" className="text-xs">
+                Free
+              </Badge>
+            </div>
+          );
+        }
+        
+        const getSubscriptionVariant = (status: string) => {
+          switch (status) {
+            case 'active': return 'default';
+            case 'trial': return 'secondary';
+            case 'cancelled': return 'destructive';
+            case 'expired': return 'outline';
+            default: return 'secondary';
+          }
+        };
+        
+        return (
+          <div className="text-sm">
+            <Badge variant={getSubscriptionVariant(userSubscription.status)} className="text-xs">
+              {userSubscription.planCode}
+            </Badge>
+            <div className="text-xs text-muted-foreground mt-1">
+              {userSubscription.status} • {userSubscription.billingCycle}
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: 'actions',
@@ -195,7 +229,7 @@ export function UserTable({
             <>
               {user.isActive ? (
                 <DropdownMenuItem 
-                  onClick={() => onSuspendUser?.(user)}
+                  onClick={() => console.log('Suspend user:', user._id)}
                   className="text-destructive focus:text-destructive"
                 >
                   <UserX className="mr-2 h-4 w-4" />
@@ -203,7 +237,7 @@ export function UserTable({
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem 
-                  onClick={() => onActivateUser?.(user)}
+                  onClick={() => console.log('Activate user:', user._id)}
                   className="text-green-600 focus:text-green-600"
                 >
                   <UserCheck className="mr-2 h-4 w-4" />
