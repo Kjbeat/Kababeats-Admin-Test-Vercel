@@ -13,77 +13,32 @@ import { apiService } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { cn } from '@/lib/utils';
 
-interface DashboardStats {
-  // User Metrics
-  totalUsers: number;
-  activeUsers: number;
-  newUsersThisMonth: number;
-  userGrowthRate: number;
-  
-  // Content Metrics
-  totalBeats: number;
-  newBeatsThisMonth: number;
-  totalDownloads: number;
-  totalUploads: number;
-  
-  // Financial Metrics
-  totalRevenue: number;
-  monthlyRevenue: number;
-  dailyRevenue: number;
-  averageOrderValue: number;
-  
-  // Sales Metrics
-  totalSales: number;
-  salesThisMonth: number;
-  topSellingBeats: Array<{
-    id: string;
-    title: string;
-    producer: string;
-    sales: number;
-    revenue: number;
-  }>;
-  
-  // Subscription Metrics
-  totalSubscribers: number;
-  activeSubscriptions: number;
-  trialSubscriptions: number;
-  cancelledSubscriptions: number;
-  subscriptionRevenue: number;
-  
-  // Engagement Metrics
-  totalPlays: number;
-  averageSessionTime: number;
-  mostPlayedGenres: Array<{
-    genre: string;
-    plays: number;
-  }>;
-  
-  // Producer Metrics
-  topProducers: Array<{
-    id: string;
-    username: string;
-    totalBeats: number;
-    totalSales: number;
-    revenue: number;
-  }>;
-  
-  // Recent Activity
-  recentActivity: Array<{
-    id: string;
-    type: 'user_registration' | 'beat_upload' | 'purchase' | 'subscription' | 'payout';
-    description: string;
-    timestamp: string;
-    amount?: number;
-  }>;
-  
-  // System Health
-  systemStatus: {
-    status: 'healthy' | 'warning' | 'critical';
-    uptime: string;
-    lastBackup: string;
-    errorRate: number;
-    responseTime: number;
-  };
+// Backend returns a smaller, simpler shape for dashboard stats. Keep a focused
+// interface here and map to UI needs with defensive defaults.
+interface RecentActivityItem {
+  _id?: string;
+  beatId?: { title?: string } | string | null;
+  buyerId?: { username?: string } | string | null;
+  sellerId?: { username?: string } | string | null;
+  amount?: number;
+  createdAt?: string | Date;
+  [key: string]: unknown;
+}
+
+interface BackendDashboardStats {
+  totalUsers?: number;
+  activeUsers?: number;
+  totalBeats?: number;
+  publishedBeats?: number;
+  totalRevenue?: number;
+  monthlyRevenue?: number;
+  totalSales?: number;
+  monthlySales?: number;
+  pendingBeats?: number;
+  flaggedContent?: number;
+  recentActivity?: RecentActivityItem[];
+  // optional future field used by the UI
+  userGrowthRate?: number;
 }
 
 interface StatCardProps {
@@ -133,7 +88,8 @@ function StatCard({ title, value, change, changeType = 'neutral', icon: Icon, co
 export function DashboardPage() {
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: () => apiService.getDashboardStats() as Promise<DashboardStats>,
+    // The backend currently returns BackendDashboardStats (see sales.service.getDashboardStats)
+    queryFn: () => apiService.getDashboardStats() as Promise<BackendDashboardStats>,
   });
 
   if (isLoading) {
@@ -185,33 +141,35 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Users"
-          value={stats?.totalUsers?.toLocaleString() || '0'}
-          change={stats?.userGrowthRate ? formatGrowthRate(stats.userGrowthRate) : undefined}
-          changeType={stats?.userGrowthRate && stats.userGrowthRate > 0 ? 'positive' : 'negative'}
+          value={(stats?.totalUsers ?? 0).toLocaleString()}
+          // Backend doesn't currently return a growth rate; only show if present
+          change={typeof stats?.userGrowthRate === 'number' ? formatGrowthRate(stats.userGrowthRate as number) : undefined}
+          changeType={typeof stats?.userGrowthRate === 'number' && (stats.userGrowthRate as number) > 0 ? 'positive' : 'neutral'}
           icon={Users}
           color="blue"
         />
         <StatCard
           title="Total Revenue"
-          value={formatCurrency(stats?.totalRevenue || 0)}
-          change={`${formatCurrency(stats?.monthlyRevenue || 0)} this month`}
-          changeType="positive"
+          value={formatCurrency(stats?.totalRevenue ?? 0)}
+          change={`${formatCurrency(stats?.monthlyRevenue ?? 0)} this month`}
+          // Show positive when monthlyRevenue > 0 else neutral
+          changeType={stats?.monthlyRevenue && stats.monthlyRevenue > 0 ? 'positive' : 'neutral'}
           icon={DollarSign}
           color="emerald"
         />
         <StatCard
           title="Total Beats"
-          value={stats?.totalBeats?.toLocaleString() || '0'}
-          change={`${stats?.newBeatsThisMonth || 0} new this month`}
-          changeType="positive"
+          value={(stats?.totalBeats ?? stats?.publishedBeats ?? 0).toLocaleString()}
+          change={`${0} new this month`}
+          changeType="neutral"
           icon={Music}
           color="purple"
         />
         <StatCard
           title="Total Sales"
-          value={stats?.totalSales?.toLocaleString() || '0'}
-          change={`${stats?.salesThisMonth || 0} this month`}
-          changeType="positive"
+          value={(stats?.totalSales ?? 0).toLocaleString()}
+          change={`${stats?.monthlySales ?? 0} this month`}
+          changeType={stats?.monthlySales && stats.monthlySales > 0 ? 'positive' : 'neutral'}
           icon={ShoppingCart}
           color="orange"
         />
@@ -221,9 +179,10 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
         <StatCard
           title="Active Subscriptions"
-          value={stats?.activeSubscriptions?.toLocaleString() || '0'}
-          change={`${stats?.totalSubscribers || 0} total subscribers`}
-          changeType="positive"
+          // Backend does not return subscription metrics yet; show 0 and a small hint
+          value={(0).toLocaleString()}
+          change={`0 total subscribers`}
+          changeType="neutral"
           icon={Crown}
           color="yellow"
         />
