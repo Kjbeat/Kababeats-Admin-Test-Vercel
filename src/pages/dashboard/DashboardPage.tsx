@@ -164,7 +164,7 @@ export function DashboardPage() {
           value={formatCurrency(stats?.totalRevenue ?? 0)}
           change={formatCurrency(stats?.monthlyRevenue ?? 0)}
           // Show positive when monthlyRevenue > 0 else neutral
-          changeType={stats?.monthlyRevenue && stats.monthlyRevenue > 0 ? 'positive' : 'neutral'}
+          // changeType={stats?.monthlyRevenue && stats.monthlyRevenue > 0 ? 'positive' : 'neutral'}
           icon={DollarSign}
           color="emerald"
         />
@@ -180,7 +180,7 @@ export function DashboardPage() {
           title="Total Sales"
           value={(stats?.totalSales ?? 0).toLocaleString()}
           change={`${stats?.monthlySales ?? 0}`}
-          changeType={stats?.monthlySales && stats.monthlySales > 0 ? 'positive' : 'neutral'}
+          // changeType={stats?.monthlySales && stats.monthlySales > 0 ? 'positive' : 'neutral'}
           icon={ShoppingCart}
           color="orange"
         />
