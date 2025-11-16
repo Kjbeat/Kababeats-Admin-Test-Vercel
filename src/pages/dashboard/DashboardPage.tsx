@@ -11,6 +11,7 @@ import {
 
 import { apiService } from '@/services/api';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ProgressionChart } from '@/components/charts/ProgressionChart';
 import { cn } from '@/lib/utils';
 
 // Backend returns a smaller, simpler shape for dashboard stats. Keep a focused
@@ -37,6 +38,14 @@ interface BackendDashboardStats {
   pendingBeats?: number;
   flaggedContent?: number;
   recentActivity?: RecentActivityItem[];
+  activeSubscriptions?: number;
+  progressionData?: Array<{
+    date: string;
+    users: number;
+    subscriptions: number;
+    beats: number;
+    sales: number;
+  }>;
   // optional future field used by the UI
   userGrowthRate?: number;
 }
@@ -151,7 +160,7 @@ export function DashboardPage() {
         <StatCard
           title="Total Revenue"
           value={formatCurrency(stats?.totalRevenue ?? 0)}
-          change={`${formatCurrency(stats?.monthlyRevenue ?? 0)} this month`}
+          change={formatCurrency(stats?.monthlyRevenue ?? 0)}
           // Show positive when monthlyRevenue > 0 else neutral
           changeType={stats?.monthlyRevenue && stats.monthlyRevenue > 0 ? 'positive' : 'neutral'}
           icon={DollarSign}
@@ -160,7 +169,7 @@ export function DashboardPage() {
         <StatCard
           title="Total Beats"
           value={(stats?.totalBeats ?? stats?.publishedBeats ?? 0).toLocaleString()}
-          change={`${0} new this month`}
+          change={`${0}`}
           changeType="neutral"
           icon={Music}
           color="purple"
@@ -168,7 +177,7 @@ export function DashboardPage() {
         <StatCard
           title="Total Sales"
           value={(stats?.totalSales ?? 0).toLocaleString()}
-          change={`${stats?.monthlySales ?? 0} this month`}
+          change={`${stats?.monthlySales ?? 0}`}
           changeType={stats?.monthlySales && stats.monthlySales > 0 ? 'positive' : 'neutral'}
           icon={ShoppingCart}
           color="orange"
@@ -179,12 +188,19 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-2">
         <StatCard
           title="Active Subscriptions"
-          // Backend does not return subscription metrics yet; show 0 and a small hint
-          value={(0).toLocaleString()}
-          change={`0 total subscribers`}
+          value={(stats?.activeSubscriptions ?? 0).toLocaleString()}
+          change={`${stats?.activeSubscriptions ?? 0} active`}
           changeType="neutral"
           icon={Crown}
           color="yellow"
+        />
+      </div>
+
+      {/* Progression Chart */}
+      <div className="mt-8">
+        <ProgressionChart 
+          data={stats?.progressionData ?? []} 
+          loading={isLoading}
         />
       </div>
     </div>
