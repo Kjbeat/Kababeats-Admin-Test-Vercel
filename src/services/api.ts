@@ -15,7 +15,7 @@ class ApiService {
 
     this.api = axios.create({
       baseURL,
-      timeout: 10000,
+      timeout: 30000, // Increased from 10000 to 30000 (30 seconds) for dashboard stats
       headers: {
         "Content-Type": "application/json",
       },

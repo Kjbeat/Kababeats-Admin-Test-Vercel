@@ -99,6 +99,8 @@ export function DashboardPage() {
     queryKey: ['dashboard-stats'],
     // The backend currently returns BackendDashboardStats (see sales.service.getDashboardStats)
     queryFn: () => apiService.getDashboardStats() as Promise<BackendDashboardStats>,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: 1, // Only retry once to avoid long waits
   });
 
   if (isLoading) {
