@@ -191,7 +191,7 @@ export function DashboardPage() {
         <StatCard
           title="Active Subscriptions"
           value={(stats?.activeSubscriptions ?? 0).toLocaleString()}
-          change={`${stats?.activeSubscriptions ?? 0} active`}
+          // change={`${stats?.activeSubscriptions ?? 0} active`}
           changeType="neutral"
           icon={Crown}
           color="yellow"
