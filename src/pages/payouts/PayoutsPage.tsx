@@ -99,6 +99,34 @@ export function PayoutsPage() {
   });
   const [selectedPayouts, setSelectedPayouts] = useState<string[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+
+  // Aggregated Payouts for Review Stage
+  const displayPayouts = useMemo(() => {
+    if (activeStage !== 'review') return payouts;
+
+    const groups: Record<string, PayoutRequest & { allIds: string[] }> = {};
+
+    for (const p of payouts) {
+      if (!p.userId || !p.userId._id) continue;
+      const uid = p.userId._id;
+      
+      if (!groups[uid]) {
+        groups[uid] = { 
+          ...p, 
+          allIds: [p._id],
+          totalAmount: p.totalAmount || 0,
+          soloAmount: p.soloAmount || 0,
+          collabAmount: p.collabAmount || 0
+        } as any;
+      } else {
+        groups[uid].allIds.push(p._id);
+        groups[uid].totalAmount += (p.totalAmount || 0);
+        groups[uid].soloAmount = (groups[uid].soloAmount || 0) + (p.soloAmount || 0);
+        groups[uid].collabAmount = (groups[uid].collabAmount || 0) + (p.collabAmount || 0);
+      }
+    }
+    return Object.values(groups);
+  }, [payouts, activeStage]);
   const [nextPayoutDate, setNextPayoutDate] = useState<Date | null>(null);
   const [timeUntilPayout, setTimeUntilPayout] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -337,9 +365,9 @@ export function PayoutsPage() {
   // Pagination
   const getCurrentPageData = () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return payouts.slice(startIndex, startIndex + itemsPerPage);
+    return displayPayouts.slice(startIndex, startIndex + itemsPerPage);
   };
-  const getTotalPages = () => Math.ceil(payouts.length / itemsPerPage);
+  const getTotalPages = () => Math.ceil(displayPayouts.length / itemsPerPage);
   const handlePageChange = (page: number) => setCurrentPage(page);
 
   const handleFilterChange = (newFilters: Partial<PayoutFilters>) => {
@@ -462,7 +490,7 @@ export function PayoutsPage() {
             {/* Stage Specific Stats */}
             <div className="hidden md:flex items-center space-x-4 text-sm text-gray-600">
               <span className="font-medium">Total: {formatCurrency(stats?.totalAmount || 0)}</span>
-              <span>({payouts.length} items)</span>
+              <span>({displayPayouts.length} items)</span>
             </div>
           </div>
 
@@ -553,12 +581,17 @@ export function PayoutsPage() {
                     className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelectedPayouts(payouts.map((p) => p._id));
+                        if (activeStage === 'review') {
+                           const allIds = (displayPayouts as any[]).flatMap(p => p.allIds);
+                           setSelectedPayouts(allIds);
+                        } else {
+                           setSelectedPayouts(displayPayouts.map((p) => p._id));
+                        }
                       } else {
                         setSelectedPayouts([]);
                       }
                     }}
-                    checked={payouts.length > 0 && selectedPayouts.length === payouts.length}
+                    checked={displayPayouts.length > 0 && selectedPayouts.length === (activeStage === 'review' ? (displayPayouts as any[]).reduce((acc, p) => acc + p.allIds.length, 0) : displayPayouts.length)}
                   />
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
@@ -575,12 +608,25 @@ export function PayoutsPage() {
                     <input
                       type="checkbox"
                       className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
-                      checked={selectedPayouts.includes(payout._id)}
+                      checked={activeStage === 'review' 
+                        ? (payout as any).allIds.every((id: string) => selectedPayouts.includes(id))
+                        : selectedPayouts.includes(payout._id)
+                      }
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedPayouts([...selectedPayouts, payout._id]);
+                        if (activeStage === 'review') {
+                           const ids = (payout as any).allIds;
+                           if (e.target.checked) {
+                             const newIds = ids.filter((id: string) => !selectedPayouts.includes(id));
+                             setSelectedPayouts([...selectedPayouts, ...newIds]);
+                           } else {
+                             setSelectedPayouts(selectedPayouts.filter((id) => !ids.includes(id)));
+                           }
                         } else {
-                          setSelectedPayouts(selectedPayouts.filter((id) => id !== payout._id));
+                          if (e.target.checked) {
+                            setSelectedPayouts([...selectedPayouts, payout._id]);
+                          } else {
+                            setSelectedPayouts(selectedPayouts.filter((id) => id !== payout._id));
+                          }
                         }
                       }}
                     />
@@ -624,7 +670,13 @@ export function PayoutsPage() {
                       
                       {activeStage === 'review' && (
                         <button
-                          onClick={() => handleStatusChange(payout._id, 'approved')}
+                          onClick={() => {
+                             const ids = (payout as any).allIds;
+                             apiService.bulkUpdatePayouts({ action: 'approve', payoutIds: ids }).then(() => {
+                                fetchPayoutsData();
+                                setSelectedPayouts([]);
+                             });
+                          }}
                           className="text-gray-400 hover:text-green-600"
                           title="Approve"
                         >
@@ -670,7 +722,7 @@ export function PayoutsPage() {
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, payouts.length)}</span> of <span className="font-medium">{payouts.length}</span> results
+                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, displayPayouts.length)}</span> of <span className="font-medium">{displayPayouts.length}</span> results
               </p>
             </div>
             <div>
