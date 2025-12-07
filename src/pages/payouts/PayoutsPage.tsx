@@ -282,17 +282,6 @@ export function PayoutsPage() {
     }
   };
 
-  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      await apiService.importPayoutsExcel(file);
-      fetchPayoutsData();
-    } catch (error) {
-      console.error("Error exporting Excel:", error);
-    }
-  };
-
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     
