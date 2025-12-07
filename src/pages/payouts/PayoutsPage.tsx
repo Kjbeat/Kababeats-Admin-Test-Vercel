@@ -549,6 +549,12 @@ export function PayoutsPage() {
         const iban = method.iban ? ` - IBAN: ${method.iban}` : "";
         return `${holder} (${bank}) ****${last4}${recipient}${iban}`;
       }
+      case "pawapay": {
+        const phone = (method as any).phone || "No phone";
+        const phoneLast4 = (method as any).phoneLast4 || phone.slice(-4);
+        const country = (method as any).countryName || (method as any).country || "Unknown";
+        return `Mobile Money - ${country} ****${phoneLast4}`;
+      }
       default:
         return method.type;
     }
@@ -954,7 +960,9 @@ export function PayoutsPage() {
             >
               <option value="all">All Methods</option>
               <option value="paypal">PayPal</option>
-              <option value="momo">Mobile Money</option>
+              <option value="paystack">Paystack</option>
+              <option value="pawapay">Mobile Money (PawaPay)</option>
+              <option value="bank_account">Bank Account</option>
               <option value="stripe">Stripe</option>
             </select>
           </div>
