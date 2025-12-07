@@ -14,6 +14,10 @@ import {
   Upload,
   History,
   Timer,
+  Eye,
+  RotateCcw,
+  FileSpreadsheet,
+  Check,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { apiService } from "@/services/api";
@@ -94,6 +98,7 @@ export function PayoutsPage() {
     search: "",
   });
   const [selectedPayouts, setSelectedPayouts] = useState<string[]>([]);
+  const [isImporting, setIsImporting] = useState(false);
   const [nextPayoutDate, setNextPayoutDate] = useState<Date | null>(null);
   const [timeUntilPayout, setTimeUntilPayout] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -284,7 +289,25 @@ export function PayoutsPage() {
       await apiService.importPayoutsExcel(file);
       fetchPayoutsData();
     } catch (error) {
-      console.error("Error importing Excel:", error);
+      console.error("Error exporting Excel:", error);
+    }
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    setIsImporting(true);
+    try {
+      await apiService.importPayoutsExcel(file);
+      await fetchPayoutsData();
+      alert("Payouts imported successfully");
+    } catch (error) {
+      console.error("Import failed:", error);
+      alert("Failed to import payouts");
+    } finally {
+      setIsImporting(false);
+      e.target.value = "";
     }
   };
 
@@ -488,6 +511,11 @@ export function PayoutsPage() {
 
             {activeStage === 'processing' && (
               <>
+                <label className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" />
+                  {isImporting ? 'Importing...' : 'Import Status'}
+                  <input type="file" className="hidden" accept=".xlsx,.xls" onChange={handleImportExcel} disabled={isImporting} />
+                </label>
                 <button
                   onClick={handleProcessPayouts}
                   disabled={isProcessing}
@@ -596,20 +624,35 @@ export function PayoutsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => handleViewUserSales(payout)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      Details
-                    </button>
-                    {activeStage === 'review' && (
+                    <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => handleStatusChange(payout._id, 'approved')}
-                        className="text-green-600 hover:text-green-900"
+                        onClick={() => handleViewUserSales(payout)}
+                        className="text-gray-400 hover:text-blue-600"
+                        title="View Details"
                       >
-                        Approve
+                        <Eye className="h-5 w-5" />
                       </button>
-                    )}
+                      
+                      {activeStage === 'review' && (
+                        <button
+                          onClick={() => handleStatusChange(payout._id, 'approved')}
+                          className="text-gray-400 hover:text-green-600"
+                          title="Approve"
+                        >
+                          <Check className="h-5 w-5" />
+                        </button>
+                      )}
+
+                      {activeStage === 'processing' && (
+                        <button
+                          onClick={() => handleStatusChange(payout._id, 'pending')}
+                          className="text-gray-400 hover:text-amber-600"
+                          title="Revert to Review"
+                        >
+                          <RotateCcw className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -672,41 +715,122 @@ export function PayoutsPage() {
       {/* User Details Modal */}
       {showUserDetails && selectedUser && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
               <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowUserDetails(false)}></div>
             </div>
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full">
               <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      Payout Details for {selectedUser.userId?.username}
-                    </h3>
-                    <div className="mt-2">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                        Payout Details
+                      </h3>
+                      <button onClick={() => setShowUserDetails(false)} className="text-gray-400 hover:text-gray-500">
+                        <XCircle className="h-6 w-6" />
+                      </button>
+                    </div>
+
+                    {/* User Info */}
+                    <div className="flex items-center mb-6 p-4 bg-gray-50 rounded-lg">
+                      <Avatar className="h-12 w-12 mr-4">
+                        <div className="bg-blue-100 text-blue-600 w-full h-full flex items-center justify-center font-bold text-xl">
+                          {selectedUser.userId?.username?.charAt(0).toUpperCase() || "U"}
+                        </div>
+                      </Avatar>
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-900">{selectedUser.userId?.username}</h4>
+                        <p className="text-sm text-gray-500">{selectedUser.userId?.email}</p>
+                      </div>
+                      <div className="ml-auto text-right">
+                        <p className="text-sm text-gray-500">Total Amount</p>
+                        <p className="text-xl font-bold text-green-600">{formatCurrency(selectedUser.totalAmount)}</p>
+                      </div>
+                    </div>
+
+                    {/* Payment Method Details */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Payment Method</h4>
+                      <div className="bg-white border border-gray-200 rounded-lg p-4">
+                        {selectedUser._userDefaultPaymentMethod ? (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-gray-500">Type</p>
+                              <p className="font-medium capitalize">{selectedUser._userDefaultPaymentMethod.type}</p>
+                            </div>
+                            {selectedUser._userDefaultPaymentMethod.type === 'bank_transfer' && (
+                              <>
+                                <div>
+                                  <p className="text-xs text-gray-500">Bank Name</p>
+                                  <p className="font-medium">{selectedUser._userDefaultPaymentMethod.bankName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Account Holder</p>
+                                  <p className="font-medium">{selectedUser._userDefaultPaymentMethod.bankHolderName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500">Account Number</p>
+                                  <p className="font-medium">**** {selectedUser._userDefaultPaymentMethod.last4 || selectedUser._userDefaultPaymentMethod.accountNumberLast4}</p>
+                                </div>
+                                {selectedUser._userDefaultPaymentMethod.iban && (
+                                  <div className="col-span-2">
+                                    <p className="text-xs text-gray-500">IBAN</p>
+                                    <p className="font-medium">{selectedUser._userDefaultPaymentMethod.iban}</p>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {selectedUser._userDefaultPaymentMethod.type === 'paypal' && (
+                              <div className="col-span-2">
+                                <p className="text-xs text-gray-500">PayPal Email</p>
+                                <p className="font-medium">{selectedUser._userDefaultPaymentMethod.email}</p>
+                              </div>
+                            )}
+                            {selectedUser._userDefaultPaymentMethod.type === 'mobile_money' && (
+                              <div className="col-span-2">
+                                <p className="text-xs text-gray-500">Phone Number</p>
+                                <p className="font-medium">{selectedUser.payoutDetails?.phone || 'N/A'}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-red-500">No payment method linked.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sales Breakdown */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Sales Breakdown</h4>
                       {loadingUserSales ? (
                         <div className="flex justify-center py-8">
                           <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
                         </div>
                       ) : (
-                        <div className="overflow-x-auto">
+                        <div className="border border-gray-200 rounded-lg overflow-hidden">
                           <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                               <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Beat</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Beat</th>
+                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Date</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                               {userSales.map((sale: any, idx) => (
                                 <tr key={idx}>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{sale.beatId?.title || 'Unknown'}</td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(sale.amount || 0)}</td>
-                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-900">{sale.beatId?.title || 'Unknown'}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(sale.amount || 0)}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-500 text-right">{new Date(sale.createdAt).toLocaleDateString()}</td>
                                 </tr>
                               ))}
+                              {userSales.length === 0 && (
+                                <tr>
+                                  <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">No sales found for this period.</td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>
@@ -718,7 +842,7 @@ export function PayoutsPage() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => setShowUserDetails(false)}
                 >
                   Close
