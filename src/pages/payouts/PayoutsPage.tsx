@@ -18,6 +18,10 @@ import {
   RotateCcw,
   FileSpreadsheet,
   Check,
+  CreditCard,
+  Landmark,
+  Smartphone,
+  Wallet,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { apiService } from "@/services/api";
@@ -145,6 +149,7 @@ export function PayoutsPage() {
   const [selectedUser, setSelectedUser] = useState<PayoutRequest | null>(null);
   const [userSales, setUserSales] = useState<Record<string, unknown>[]>([]);
   const [showUserDetails, setShowUserDetails] = useState(false);
+  const [showPaymentMethod, setShowPaymentMethod] = useState(false);
   const [loadingUserSales, setLoadingUserSales] = useState(false);
 
   // Debounce search input
@@ -407,6 +412,17 @@ export function PayoutsPage() {
   };
 
   // Helper for payout method display
+  function getPayoutMethodIcon(method?: PayoutRequest["_userDefaultPaymentMethod"]) {
+    if (!method) return <AlertCircle className="h-5 w-5 text-red-500" />;
+    switch (method.type) {
+      case 'bank_transfer': return <Landmark className="h-5 w-5 text-gray-600" />;
+      case 'paypal': return <Wallet className="h-5 w-5 text-blue-600" />;
+      case 'pawapay': return <Smartphone className="h-5 w-5 text-purple-600" />;
+      case 'mobile_money': return <Smartphone className="h-5 w-5 text-purple-600" />;
+      default: return <CreditCard className="h-5 w-5 text-gray-600" />;
+    }
+  }
+
   function getFormattedPayoutMethodLabel(method?: PayoutRequest["_userDefaultPaymentMethod"]): string {
     if (!method) return "N/A";
     if (method.type === "paypal") return `PayPal - ${method.email || "No email"}`;
@@ -671,7 +687,16 @@ export function PayoutsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {getFormattedPayoutMethodLabel(payout._userDefaultPaymentMethod)}
+                    <button 
+                      onClick={() => {
+                        setSelectedUser(payout);
+                        setShowPaymentMethod(true);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      title="View Payment Method"
+                    >
+                      {getPayoutMethodIcon(payout._userDefaultPaymentMethod)}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBgClass(payout.status)} text-white`}>
@@ -808,6 +833,11 @@ export function PayoutsPage() {
                       <div className="ml-auto text-right">
                         <p className="text-sm text-gray-500">Total Amount</p>
                         <p className="text-xl font-bold text-green-600">{formatCurrency(selectedUser.totalAmount)}</p>
+                        <div className="text-xs text-gray-500 mt-1">
+                          <span>Solo: {formatCurrency(selectedUser.soloAmount || 0)}</span>
+                          <span className="mx-1">|</span>
+                          <span>Collab: {formatCurrency(selectedUser.collabAmount || 0)}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -905,6 +935,95 @@ export function PayoutsPage() {
                   type="button"
                   className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:ml-3 sm:w-auto sm:text-sm"
                   onClick={() => setShowUserDetails(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Payment Method Modal */}
+      {showPaymentMethod && selectedUser && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowPaymentMethod(false)}></div>
+            </div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                        Payment Method Details
+                      </h3>
+                      <button onClick={() => setShowPaymentMethod(false)} className="text-gray-400 hover:text-gray-500">
+                        <XCircle className="h-6 w-6" />
+                      </button>
+                    </div>
+
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        {selectedUser._userDefaultPaymentMethod ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center mb-4">
+                                {getPayoutMethodIcon(selectedUser._userDefaultPaymentMethod)}
+                                <span className="ml-2 font-bold capitalize text-lg">{selectedUser._userDefaultPaymentMethod.type.replace('_', ' ')}</span>
+                            </div>
+                            
+                            {selectedUser._userDefaultPaymentMethod.type === 'bank_transfer' && (
+                              <div className="grid grid-cols-1 gap-2">
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase">Bank Name</p>
+                                  <p className="font-medium text-gray-900">{selectedUser._userDefaultPaymentMethod.bankName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase">Account Holder</p>
+                                  <p className="font-medium text-gray-900">{selectedUser._userDefaultPaymentMethod.bankHolderName}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase">Account Number</p>
+                                  <p className="font-medium text-gray-900">**** {selectedUser._userDefaultPaymentMethod.last4 || selectedUser._userDefaultPaymentMethod.accountNumberLast4}</p>
+                                </div>
+                                {selectedUser._userDefaultPaymentMethod.iban && (
+                                  <div>
+                                    <p className="text-xs text-gray-500 uppercase">IBAN</p>
+                                    <p className="font-medium text-gray-900">{selectedUser._userDefaultPaymentMethod.iban}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {selectedUser._userDefaultPaymentMethod.type === 'paypal' && (
+                              <div>
+                                <p className="text-xs text-gray-500 uppercase">PayPal Email</p>
+                                <p className="font-medium text-gray-900">{selectedUser._userDefaultPaymentMethod.email}</p>
+                              </div>
+                            )}
+                            {(selectedUser._userDefaultPaymentMethod.type === 'mobile_money' || selectedUser._userDefaultPaymentMethod.type === 'pawapay') && (
+                              <div>
+                                <p className="text-xs text-gray-500 uppercase">Phone Number</p>
+                                <p className="font-medium text-gray-900">{selectedUser.payoutDetails?.phone || (selectedUser._userDefaultPaymentMethod as any).phone || 'N/A'}</p>
+                                <p className="text-xs text-gray-500 uppercase mt-2">Provider</p>
+                                <p className="font-medium text-gray-900">{(selectedUser._userDefaultPaymentMethod as any).provider || 'Mobile Money'}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                             <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                             <p className="text-red-600 font-medium">No payment method linked.</p>
+                          </div>
+                        )}
+                      </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowPaymentMethod(false)}
                 >
                   Close
                 </button>
