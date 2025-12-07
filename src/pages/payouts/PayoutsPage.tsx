@@ -132,7 +132,7 @@ export function PayoutsPage() {
     // Override based on stage
     if (activeStage === "review") {
       params.status = "pending";
-      delete params.month; // Show all pending
+      delete params.month; // Show all pending (carry over)
       delete params.year;
     } else if (activeStage === "approved") {
       params.status = "approved";
@@ -143,8 +143,8 @@ export function PayoutsPage() {
       delete params.month;
       delete params.year;
     } else if (activeStage === "history") {
-      params.historical = true;
-      // Keep month/year filters for history
+      params.status = "paid"; // Only show paid
+      // Do NOT set historical=true, as it overrides specific month/year filters in backend
     }
 
     // Clean up
@@ -505,6 +505,7 @@ export function PayoutsPage() {
                     onChange={(e) => handleFilterChange({ month: e.target.value })}
                     className="border border-gray-300 rounded-md text-sm"
                   >
+                    <option value="all">All Months</option>
                     {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
                   </select>
                   <select
@@ -512,6 +513,7 @@ export function PayoutsPage() {
                     onChange={(e) => handleFilterChange({ year: e.target.value })}
                     className="border border-gray-300 rounded-md text-sm"
                   >
+                    <option value="all">All Years</option>
                     {years.map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
                </div>
