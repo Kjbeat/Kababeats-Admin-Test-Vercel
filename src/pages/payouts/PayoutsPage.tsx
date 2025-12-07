@@ -104,7 +104,7 @@ export function PayoutsPage() {
   const displayPayouts = useMemo(() => {
     if (activeStage !== 'review') return payouts;
 
-    const groups: Record<string, PayoutRequest & { allIds: string[] }> = {};
+    const groups: Record<string, PayoutRequest & { allIds: string[], periods: {month: number, year: number}[] }> = {};
 
     for (const p of payouts) {
       if (!p.userId || !p.userId._id) continue;
@@ -114,12 +114,17 @@ export function PayoutsPage() {
         groups[uid] = { 
           ...p, 
           allIds: [p._id],
+          periods: [{ month: p.month, year: p.year }],
           totalAmount: p.totalAmount || 0,
           soloAmount: p.soloAmount || 0,
           collabAmount: p.collabAmount || 0
         } as any;
       } else {
         groups[uid].allIds.push(p._id);
+        const exists = groups[uid].periods.some(per => per.month === p.month && per.year === p.year);
+        if (!exists) {
+            groups[uid].periods.push({ month: p.month, year: p.year });
+        }
         groups[uid].totalAmount += (p.totalAmount || 0);
         groups[uid].soloAmount = (groups[uid].soloAmount || 0) + (p.soloAmount || 0);
         groups[uid].collabAmount = (groups[uid].collabAmount || 0) + (p.collabAmount || 0);
@@ -334,7 +339,22 @@ export function PayoutsPage() {
       setSelectedUser(payout);
       const userId = payout.userId?._id;
       if (!userId) return;
-      const salesData = await apiService.getUserSalesByMonth(userId, payout.month, payout.year);
+
+      let salesData: any[] = [];
+      const aggregatedPayout = payout as any;
+
+      if (aggregatedPayout.periods && aggregatedPayout.periods.length > 0) {
+          // Fetch sales for all aggregated periods
+          const promises = aggregatedPayout.periods.map((period: {month: number, year: number}) => 
+              apiService.getUserSalesByMonth(userId, period.month, period.year)
+          );
+          const results = await Promise.all(promises);
+          // Flatten results and remove duplicates if any (though unlikely across months)
+          salesData = results.flat();
+      } else {
+          salesData = await apiService.getUserSalesByMonth(userId, payout.month, payout.year);
+      }
+
       setUserSales(Array.isArray(salesData) ? salesData : []);
       setShowUserDetails(true);
     } catch (error) {
