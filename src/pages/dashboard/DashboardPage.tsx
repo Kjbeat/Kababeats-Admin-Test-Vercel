@@ -287,8 +287,6 @@ function FullLogsModal({ onClose }: { onClose: () => void }) {
 }
 
 export function DashboardPage() {
-  const [showLogsModal, setShowLogsModal] = useState(false);
-
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['dashboard-stats'],
     // The backend currently returns BackendDashboardStats (see sales.service.getDashboardStats)
@@ -405,24 +403,11 @@ export function DashboardPage() {
                   <div className="p-6 text-center text-gray-500 text-sm">No recent activity</div>
                 )}
               </div>
-              <div className="p-3 bg-gray-50 text-center">
-                <button 
-                  onClick={() => setShowLogsModal(true)}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-800"
-                >
-                  View Full Log
-                </button>
-              </div>
            </div>
         </div>
       </div>
 
       {/* Modals */}
-      {showLogsModal && (
-        <FullLogsModal 
-          onClose={() => setShowLogsModal(false)} 
-        />
-      )}
     </div>
   );
 }
