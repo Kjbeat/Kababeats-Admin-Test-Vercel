@@ -42,6 +42,8 @@ interface BackendDashboardStats {
   publishedBeats?: number;
   totalRevenue?: number;
   monthlyRevenue?: number;
+  totalPlatformFees?: number;
+  totalSubscriptionRevenue?: number;
   totalSales?: number;
   monthlySales?: number;
   pendingBeats?: number;
@@ -176,16 +178,12 @@ function RevenueBreakdownModal({ onClose, stats }: { onClose: () => void, stats?
                 <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Sources</h4>
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Beat Sales</span>
-                    <span className="font-medium text-gray-900">{formatCurrency((stats?.totalSales ?? 0) * 25)} <span className="text-xs text-gray-400 font-normal">(Est.)</span></span>
+                    <span className="text-gray-600">Platform Fees (from Sales)</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(stats?.totalPlatformFees ?? 0)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Subscriptions</span>
-                    <span className="font-medium text-gray-900">{formatCurrency((stats?.activeSubscriptions ?? 0) * 9.99)} <span className="text-xs text-gray-400 font-normal">(Est.)</span></span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Platform Fees</span>
-                    <span className="font-medium text-gray-900">{formatCurrency((stats?.totalRevenue ?? 0) * 0.1)} <span className="text-xs text-gray-400 font-normal">(10%)</span></span>
+                    <span className="text-gray-600">Subscription Revenue</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(stats?.totalSubscriptionRevenue ?? 0)}</span>
                   </div>
                 </div>
               </div>
