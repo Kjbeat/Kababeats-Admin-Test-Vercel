@@ -92,7 +92,7 @@ export function PayoutsPage() {
   const [stats, setStats] = useState<PayoutStats | null>(null);
   
   // Workflow State
-  const [activeStage, setActiveStage] = useState<"review" | "approved" | "processing" | "history">("review");
+  const [activeStage, setActiveStage] = useState<"review" | "approved" | "processing" | "paid" | "history" | "reports">("review");
   
   const [filters, setFilters] = useState<PayoutFilters>({
     status: "all",
@@ -151,6 +151,13 @@ export function PayoutsPage() {
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showPaymentMethod, setShowPaymentMethod] = useState(false);
   const [loadingUserSales, setLoadingUserSales] = useState(false);
+  
+  // Reports State
+  const [allTimeStats, setAllTimeStats] = useState<{ totalAmount: number; count: number } | null>(null);
+  
+  // Modal Pagination State
+  const [modalCurrentPage, setModalCurrentPage] = useState(1);
+  const modalItemsPerPage = 5;
 
   // Debounce search input
   useEffect(() => {
@@ -185,9 +192,15 @@ export function PayoutsPage() {
       params.status = "processing";
       delete params.month;
       delete params.year;
+    } else if (activeStage === "paid") {
+      params.status = "paid";
+      // Keep month/year filters (defaults to current)
     } else if (activeStage === "history") {
-      params.status = "paid"; // Only show paid
-      // Do NOT set historical=true, as it overrides specific month/year filters in backend
+      params.status = "paid";
+      // Keep month/year filters
+    } else if (activeStage === "reports") {
+      params.status = "paid";
+      // Keep month/year filters
     }
 
     // Clean up
@@ -226,6 +239,25 @@ export function PayoutsPage() {
       setLoading(false);
     }
   }, [filters, activeStage]);
+
+  // Fetch All-Time Stats for Reports
+  useEffect(() => {
+    if (activeStage === 'reports') {
+      const fetchAllTimeStats = async () => {
+        try {
+          // Fetch all paid payouts without date filters
+          const response = await apiService.getPayouts({ status: 'paid' });
+          if (response && Array.isArray(response)) {
+            const total = response.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+            setAllTimeStats({ totalAmount: total, count: response.length });
+          }
+        } catch (error) {
+          console.error("Error fetching all-time stats:", error);
+        }
+      };
+      fetchAllTimeStats();
+    }
+  }, [activeStage]);
 
   useEffect(() => {
     fetchPayoutsData();
@@ -342,6 +374,7 @@ export function PayoutsPage() {
     try {
       setLoadingUserSales(true);
       setSelectedUser(payout);
+      setModalCurrentPage(1); // Reset pagination
       const userId = payout.userId?._id;
       if (!userId) return;
 
@@ -406,7 +439,9 @@ export function PayoutsPage() {
       case 'review': return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'approved': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'processing': return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'paid': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'history': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'reports': return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       default: return 'bg-gray-100';
     }
   };
@@ -511,12 +546,12 @@ export function PayoutsPage() {
           </div>
 
           {/* Pipeline Tabs */}
-          <div className="flex space-x-1 bg-gray-50 p-1 rounded-lg">
-            {(['review', 'approved', 'processing', 'history'] as const).map((stage) => (
+          <div className="flex space-x-1 bg-gray-50 p-1 rounded-lg overflow-x-auto">
+            {(['review', 'approved', 'processing', 'paid', 'history', 'reports'] as const).map((stage) => (
               <button
                 key={stage}
                 onClick={() => { setActiveStage(stage); setCurrentPage(1); }}
-                className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center
+                className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-all duration-200 flex items-center justify-center whitespace-nowrap
                   ${activeStage === stage 
                     ? 'bg-white text-blue-600 shadow-sm ring-1 ring-black ring-opacity-5' 
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}
@@ -524,7 +559,9 @@ export function PayoutsPage() {
                 {stage === 'review' && <AlertCircle className="h-4 w-4 mr-2" />}
                 {stage === 'approved' && <CheckCircle className="h-4 w-4 mr-2" />}
                 {stage === 'processing' && <RefreshCw className="h-4 w-4 mr-2" />}
+                {stage === 'paid' && <DollarSign className="h-4 w-4 mr-2" />}
                 {stage === 'history' && <History className="h-4 w-4 mr-2" />}
+                {stage === 'reports' && <TrendingUp className="h-4 w-4 mr-2" />}
                 {stage.charAt(0).toUpperCase() + stage.slice(1)}
               </button>
             ))}
@@ -563,6 +600,40 @@ export function PayoutsPage() {
                   className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
                 >
                   Approve Selected ({selectedPayouts.length})
+                </button>
+                <button
+                  onClick={async () => {
+                    // Find users without payment method in current view
+                    const usersToNotify = displayPayouts.filter(p => !p._userDefaultPaymentMethod);
+                    if (usersToNotify.length === 0) {
+                        alert("All users in this list have a payment method.");
+                        return;
+                    }
+                    if (!confirm(`Notify ${usersToNotify.length} users to add a payment method?`)) return;
+                    
+                    let count = 0;
+                    for (const p of usersToNotify) {
+                        if (p.userId?._id) {
+                            try {
+                                await apiService.createNotification({
+                                    userId: p.userId._id,
+                                    title: "Action Required: Add Payment Method",
+                                    message: "Please add a valid payment method to receive your payout.",
+                                    type: "system",
+                                    link: "/settings/payouts"
+                                });
+                                count++;
+                            } catch (e) {
+                                console.error("Failed to notify user", p.userId._id, e);
+                            }
+                        }
+                    }
+                    alert(`Sent notifications to ${count} users.`);
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <AlertCircle className="h-4 w-4 mr-2 text-amber-500" />
+                  Notify No Payment Method
                 </button>
               </>
             )}
@@ -603,7 +674,7 @@ export function PayoutsPage() {
               </>
             )}
             
-            {activeStage === 'history' && (
+            {(activeStage === 'history' || activeStage === 'paid' || activeStage === 'reports') && (
                <div className="flex space-x-2">
                  <select
                     value={filters.month}
@@ -630,7 +701,51 @@ export function PayoutsPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Reports Dashboard */}
+        {activeStage === 'reports' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-6 py-6 bg-white border-b border-gray-200">
+            <div className="bg-indigo-50 rounded-lg p-6 border border-indigo-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-indigo-900">Total Payouts (All Time)</h3>
+                <TrendingUp className="h-6 w-6 text-indigo-600" />
+              </div>
+              <p className="text-3xl font-bold text-indigo-700">
+                {allTimeStats ? formatCurrency(allTimeStats.totalAmount) : '...'}
+              </p>
+              <p className="text-sm text-indigo-600 mt-2">
+                {allTimeStats ? `${allTimeStats.count} total transactions` : 'Loading...'}
+              </p>
+            </div>
+
+            <div className="bg-emerald-50 rounded-lg p-6 border border-emerald-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-emerald-900">Payouts (Selected Period)</h3>
+                <Calendar className="h-6 w-6 text-emerald-600" />
+              </div>
+              <p className="text-3xl font-bold text-emerald-700">
+                {formatCurrency(stats?.totalAmount || 0)}
+              </p>
+              <p className="text-sm text-emerald-600 mt-2">
+                {displayPayouts.length} transactions in this view
+              </p>
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-blue-900">Average Payout</h3>
+                <DollarSign className="h-6 w-6 text-blue-600" />
+              </div>
+              <p className="text-3xl font-bold text-blue-700">
+                {formatCurrency(stats?.averagePayout || 0)}
+              </p>
+              <p className="text-sm text-blue-600 mt-2">
+                Per user for selected period
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Table */ }
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -746,7 +861,7 @@ export function PayoutsPage() {
                                 setSelectedPayouts([]);
                              });
                           }}
-                          className="text-gray-400 hover:text-green-600"
+                          className="text-gray-400 hover:text-green-600 hidden" // Hidden as per request
                           title="Approve"
                         >
                           <Check className="h-5 w-5" />
@@ -934,13 +1049,17 @@ export function PayoutsPage() {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {userSales.map((sale: any, idx) => {
+                              {userSales
+                                .slice((modalCurrentPage - 1) * modalItemsPerPage, modalCurrentPage * modalItemsPerPage)
+                                .map((sale: any, idx) => {
                                 const userEarnings = getEarningsForUser(sale, selectedUser.userId?._id);
                                 return (
                                 <tr key={idx}>
                                   <td className="px-4 py-2 text-sm text-gray-900">{sale.beatId?.title || 'Unknown'}</td>
                                   <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(userEarnings)}</td>
-                                  <td className="px-4 py-2 text-sm text-gray-500 text-right">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-500 text-right">
+                                    {new Date(sale.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                                  </td>
                                 </tr>
                                 );
                               })}
@@ -951,6 +1070,58 @@ export function PayoutsPage() {
                               )}
                             </tbody>
                           </table>
+                          
+                          {/* Modal Pagination */}
+                          {userSales.length > modalItemsPerPage && (
+                            <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                              <div className="flex-1 flex justify-between sm:hidden">
+                                <button
+                                  onClick={() => setModalCurrentPage(Math.max(1, modalCurrentPage - 1))}
+                                  disabled={modalCurrentPage === 1}
+                                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                  Previous
+                                </button>
+                                <button
+                                  onClick={() => setModalCurrentPage(Math.min(Math.ceil(userSales.length / modalItemsPerPage), modalCurrentPage + 1))}
+                                  disabled={modalCurrentPage === Math.ceil(userSales.length / modalItemsPerPage)}
+                                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                  Next
+                                </button>
+                              </div>
+                              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                  <p className="text-sm text-gray-700">
+                                    Showing <span className="font-medium">{(modalCurrentPage - 1) * modalItemsPerPage + 1}</span> to <span className="font-medium">{Math.min(modalCurrentPage * modalItemsPerPage, userSales.length)}</span> of <span className="font-medium">{userSales.length}</span> results
+                                  </p>
+                                </div>
+                                <div>
+                                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    <button
+                                      onClick={() => setModalCurrentPage(Math.max(1, modalCurrentPage - 1))}
+                                      disabled={modalCurrentPage === 1}
+                                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                      <span className="sr-only">Previous</span>
+                                      Previous
+                                    </button>
+                                    <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                      Page {modalCurrentPage} of {Math.ceil(userSales.length / modalItemsPerPage)}
+                                    </span>
+                                    <button
+                                      onClick={() => setModalCurrentPage(Math.min(Math.ceil(userSales.length / modalItemsPerPage), modalCurrentPage + 1))}
+                                      disabled={modalCurrentPage === Math.ceil(userSales.length / modalItemsPerPage)}
+                                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                      <span className="sr-only">Next</span>
+                                      Next
+                                    </button>
+                                  </nav>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
