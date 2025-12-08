@@ -287,7 +287,6 @@ function FullLogsModal({ onClose }: { onClose: () => void }) {
 }
 
 export function DashboardPage() {
-  const [showRevenueModal, setShowRevenueModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
 
   const { data: stats, isLoading, error } = useQuery({
@@ -345,17 +344,7 @@ export function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-         {/* Revenue */}
-         <DashboardCard 
-            title="Total Revenue" 
-            value={formatCurrency(stats?.totalRevenue ?? 0)}
-            subValue={`+${formatCurrency(stats?.monthlyRevenue ?? 0)} this month`}
-            icon={DollarSign}
-            color="emerald"
-            trend="up"
-            onClick={() => setShowRevenueModal(true)}
-         />
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
          {/* Users */}
          <DashboardCard 
             title="Total Users" 
@@ -429,13 +418,6 @@ export function DashboardPage() {
       </div>
 
       {/* Modals */}
-      {showRevenueModal && (
-        <RevenueBreakdownModal 
-          onClose={() => setShowRevenueModal(false)} 
-          stats={stats} 
-        />
-      )}
-      
       {showLogsModal && (
         <FullLogsModal 
           onClose={() => setShowLogsModal(false)} 
