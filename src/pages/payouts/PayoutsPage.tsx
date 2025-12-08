@@ -213,6 +213,12 @@ export function PayoutsPage() {
         delete params[key];
       }
     });
+
+    // Fix month 0-11 to 1-12 for backend
+    if (params.month && params.month !== 'all') {
+      params.month = parseInt(params.month as string) + 1;
+    }
+
     return params;
   }
 
