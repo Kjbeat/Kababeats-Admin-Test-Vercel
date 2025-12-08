@@ -458,6 +458,30 @@ export function PayoutsPage() {
     }
   }
 
+  // Helper to calculate user earnings from a sale
+  const getEarningsForUser = (sale: any, userId?: string) => {
+    if (!userId) return 0;
+    
+    // Check splits first
+    if (sale.earningsSplits && sale.earningsSplits.length > 0) {
+      const split = sale.earningsSplits.find((s: any) => {
+         const sId = s.userId?._id || s.userId;
+         return sId === userId;
+      });
+      if (split) return split.amount;
+    }
+    
+    // If no split found, check if user is the seller
+    const sellerId = sale.sellerId?._id || sale.sellerId;
+    if (sellerId === userId) {
+       // If sellerProfit is defined, use it. Otherwise fallback to amount (gross)
+       if (sale.sellerProfit !== undefined) return sale.sellerProfit;
+       return sale.amount;
+    }
+    
+    return 0;
+  };
+
   if (loading && !payouts.length) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -910,13 +934,16 @@ export function PayoutsPage() {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {userSales.map((sale: any, idx) => (
+                              {userSales.map((sale: any, idx) => {
+                                const userEarnings = getEarningsForUser(sale, selectedUser.userId?._id);
+                                return (
                                 <tr key={idx}>
                                   <td className="px-4 py-2 text-sm text-gray-900">{sale.beatId?.title || 'Unknown'}</td>
-                                  <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(sale.amount || 0)}</td>
+                                  <td className="px-4 py-2 text-sm text-gray-900 text-right">{formatCurrency(userEarnings)}</td>
                                   <td className="px-4 py-2 text-sm text-gray-500 text-right">{new Date(sale.createdAt).toLocaleDateString()}</td>
                                 </tr>
-                              ))}
+                                );
+                              })}
                               {userSales.length === 0 && (
                                 <tr>
                                   <td colSpan={3} className="px-4 py-4 text-center text-sm text-gray-500">No sales found for this period.</td>
